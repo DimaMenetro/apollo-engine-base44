@@ -1,19 +1,19 @@
-import Dashboard from './pages/Dashboard';
-import SubjectIntake from './pages/SubjectIntake';
-import Processing from './pages/Processing';
-import SubjectReview from './pages/SubjectReview';
 import DSPReport from './pages/DSPReport';
+import Dashboard from './pages/Dashboard';
+import Processing from './pages/Processing';
 import Reports from './pages/Reports';
+import SubjectIntake from './pages/SubjectIntake';
+import SubjectReview from './pages/SubjectReview';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
-    "Dashboard": Dashboard,
-    "SubjectIntake": SubjectIntake,
-    "Processing": Processing,
-    "SubjectReview": SubjectReview,
     "DSPReport": DSPReport,
+    "Dashboard": Dashboard,
+    "Processing": Processing,
     "Reports": Reports,
+    "SubjectIntake": SubjectIntake,
+    "SubjectReview": SubjectReview,
 }
 
 export const pagesConfig = {

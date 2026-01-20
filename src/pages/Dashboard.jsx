@@ -33,7 +33,7 @@ export default function Dashboard() {
   const processingSubjects = subjects.filter(s => s.status === 'processing');
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8">
+    <div className="max-w-7xl mx-auto space-y-8 pb-20">
       {/* Header */}
       <div className="flex items-end justify-between">
         <div>
