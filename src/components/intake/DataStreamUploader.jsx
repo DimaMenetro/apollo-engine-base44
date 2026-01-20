@@ -75,16 +75,24 @@ export default function DataStreamUploader({ streamKey, files, onFilesChange }) 
   const Icon = config.icon;
 
   const handleUpload = async (fileList) => {
+    if (!fileList || fileList.length === 0) return;
+    
     setUploading(true);
-    const newUrls = [];
-    
-    for (const file of fileList) {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      newUrls.push(file_url);
+    try {
+      const newUrls = [];
+      
+      for (const file of fileList) {
+        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        newUrls.push(file_url);
+      }
+      
+      onFilesChange([...files, ...newUrls]);
+    } catch (error) {
+      console.error('Upload failed:', error);
+      alert('Upload failed. Please try again.');
+    } finally {
+      setUploading(false);
     }
-    
-    onFilesChange([...files, ...newUrls]);
-    setUploading(false);
   };
 
   const handleDrop = useCallback((e) => {
@@ -94,7 +102,7 @@ export default function DataStreamUploader({ streamKey, files, onFilesChange }) 
     if (droppedFiles.length > 0) {
       handleUpload(droppedFiles);
     }
-  }, [files]);
+  }, [files, handleUpload]);
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -127,7 +135,12 @@ export default function DataStreamUploader({ streamKey, files, onFilesChange }) 
           type="file"
           accept={config.accept}
           multiple
-          onChange={(e) => handleUpload(Array.from(e.target.files))}
+          onChange={(e) => {
+            if (e.target.files?.length > 0) {
+              handleUpload(Array.from(e.target.files));
+              e.target.value = '';
+            }
+          }}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
           disabled={uploading}
         />
