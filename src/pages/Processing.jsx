@@ -84,6 +84,7 @@ export default function Processing() {
     queryKey: ['subject', subjectId],
     queryFn: () => base44.entities.Subject.filter({ id: subjectId }),
     enabled: !!subjectId,
+    retry: 1,
   });
 
   const subject = subjectData?.[0];

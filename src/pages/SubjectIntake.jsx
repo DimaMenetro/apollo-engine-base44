@@ -34,6 +34,7 @@ export default function SubjectIntake() {
     queryKey: ['subject', subjectId],
     queryFn: () => base44.entities.Subject.filter({ id: subjectId }),
     enabled: !!subjectId,
+    retry: 1,
   });
 
   useEffect(() => {

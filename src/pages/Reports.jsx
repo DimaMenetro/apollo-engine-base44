@@ -38,10 +38,26 @@ export default function Reports() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  const { data: subjects = [], isLoading } = useQuery({
+  const { data: subjects = [], isLoading, error } = useQuery({
     queryKey: ['subjects'],
     queryFn: () => base44.entities.Subject.list('-created_date', 100),
+    retry: 1,
   });
+
+  if (error) {
+    return (
+      <div className="max-w-4xl mx-auto text-center py-20">
+        <p className="text-slate-500 mb-4">Unable to load data</p>
+        <Button 
+          variant="outline" 
+          onClick={() => window.location.reload()}
+          className="border-slate-700 text-slate-300"
+        >
+          Retry
+        </Button>
+      </div>
+    );
+  }
 
   const filteredSubjects = subjects.filter(subject => {
     const matchesSearch = !search || 
