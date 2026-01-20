@@ -17,9 +17,10 @@ import SubjectCard from '../components/dashboard/SubjectCard';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Dashboard() {
-  const { data: subjects = [], isLoading } = useQuery({
+  const { data: subjects = [], isLoading, error } = useQuery({
     queryKey: ['subjects'],
     queryFn: () => base44.entities.Subject.list('-created_date', 50),
+    retry: 1,
   });
 
   const stats = {
@@ -31,6 +32,21 @@ export default function Dashboard() {
 
   const recentSubjects = subjects.slice(0, 6);
   const processingSubjects = subjects.filter(s => s.status === 'processing');
+
+  if (error) {
+    return (
+      <div className="max-w-4xl mx-auto text-center py-20">
+        <p className="text-slate-500 mb-4">Unable to load subjects data</p>
+        <Button 
+          variant="outline" 
+          onClick={() => window.location.reload()}
+          className="border-slate-700 text-slate-300"
+        >
+          Retry
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-20">
