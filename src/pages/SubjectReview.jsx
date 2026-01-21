@@ -85,7 +85,13 @@ Generate:
    - Extraversion
    - Agreeableness
    - Neuroticism
-4. 3-5 IF/THEN predictions (e.g., IF confronted with criticism THEN likely to deflect)
+4. 3-5 behavioral predictions with:
+  - Trigger event (what precipitates the behavior)
+  - Contextual factors (environmental/social conditions)
+  - Predicted behavior (detailed expected response)
+  - Probability percentage (0-100)
+  - Confidence interval (lower and upper bounds)
+  - Temporal factors (timing, duration)
 5. 3-5 core motivations
 6. 3-5 core fears
 7. Confidence score (0-100)`,
@@ -105,7 +111,26 @@ Generate:
               neuroticism: { type: "object", properties: { score: { type: "number" }, evidence: { type: "string" } } },
             }
           },
-          predictions: { type: "array", items: { type: "object", properties: { scenario: { type: "string" }, response: { type: "string" } } } },
+          predictions: { 
+            type: "array", 
+            items: { 
+              type: "object", 
+              properties: { 
+                trigger: { type: "string" }, 
+                context: { type: "string" },
+                predicted_behavior: { type: "string" },
+                probability: { type: "number" },
+                confidence_interval: { 
+                  type: "object",
+                  properties: {
+                    lower: { type: "number" },
+                    upper: { type: "number" }
+                  }
+                },
+                temporal_factors: { type: "string" }
+              } 
+            } 
+          },
           motivations: { type: "array", items: { type: "string" } },
           fears: { type: "array", items: { type: "string" } }
         }
