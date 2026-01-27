@@ -82,14 +82,30 @@ export default function DataStreamUploader({ streamKey, files, onFilesChange }) 
       const newUrls = [];
       
       for (const file of fileList) {
-        const { file_url } = await base44.integrations.Core.UploadFile({ file });
-        newUrls.push(file_url);
+        let retries = 0;
+        const maxRetries = 3;
+        let uploaded = false;
+        
+        while (retries < maxRetries && !uploaded) {
+          try {
+            const { file_url } = await base44.integrations.Core.UploadFile({ file });
+            newUrls.push(file_url);
+            uploaded = true;
+          } catch (error) {
+            retries++;
+            if (retries < maxRetries) {
+              await new Promise(resolve => setTimeout(resolve, Math.pow(2, retries) * 1000));
+            } else {
+              throw error;
+            }
+          }
+        }
       }
       
       onFilesChange([...files, ...newUrls]);
     } catch (error) {
       console.error('Upload failed:', error);
-      alert('Upload failed. Please try again.');
+      alert('Upload failed after multiple attempts. Please try again.');
     } finally {
       setUploading(false);
     }

@@ -21,6 +21,7 @@ import {
 import PersonalityMatrix from '../components/review/PersonalityMatrix';
 import ActionResponseMatrix from '../components/review/ActionResponseMatrix';
 import MotivationsSection from '../components/review/MotivationsSection';
+import DataStreamUploader from '../components/intake/DataStreamUploader';
 import { motion } from 'framer-motion';
 
 export default function SubjectReview() {
@@ -165,6 +166,10 @@ Generate:
   const handleFinalize = async () => {
     await updateMutation.mutateAsync({ dsp, status: 'finalized' });
     navigate(createPageUrl(`DSPReport?id=${subjectId}`));
+  };
+
+  const handleStreamFilesChange = (streamKey, newFiles) => {
+    updateMutation.mutate({ [streamKey]: newFiles });
   };
 
   if (isLoading) {
@@ -367,6 +372,42 @@ Generate:
             editable={isEditing}
           />
         </div>
+
+        {/* Additional Evidence Upload */}
+        {isEditing && (
+          <div className="glass-panel rounded-2xl p-6">
+            <h3 className="text-sm font-medium text-slate-200 uppercase tracking-wider mb-6">
+              Additional Evidence
+            </h3>
+            <div className="space-y-4">
+              <DataStreamUploader
+                streamKey="stream_a_text"
+                files={subject.stream_a_text || []}
+                onFilesChange={(files) => handleStreamFilesChange('stream_a_text', files)}
+              />
+              <DataStreamUploader
+                streamKey="stream_b_audio"
+                files={subject.stream_b_audio || []}
+                onFilesChange={(files) => handleStreamFilesChange('stream_b_audio', files)}
+              />
+              <DataStreamUploader
+                streamKey="stream_c_video"
+                files={subject.stream_c_video || []}
+                onFilesChange={(files) => handleStreamFilesChange('stream_c_video', files)}
+              />
+              <DataStreamUploader
+                streamKey="stream_d_behavioral"
+                files={subject.stream_d_behavioral || []}
+                onFilesChange={(files) => handleStreamFilesChange('stream_d_behavioral', files)}
+              />
+              <DataStreamUploader
+                streamKey="stream_e_analog"
+                files={subject.stream_e_analog || []}
+                onFilesChange={(files) => handleStreamFilesChange('stream_e_analog', files)}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
