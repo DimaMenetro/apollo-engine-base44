@@ -13,6 +13,7 @@ const statusConfig = {
   running: { icon: Loader2, color: 'text-amber-500', bg: 'bg-amber-500/20', spin: true },
   complete: { icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-500/20' },
   conflict: { icon: AlertTriangle, color: 'text-rose-500', bg: 'bg-rose-500/20' },
+  error: { icon: AlertTriangle, color: 'text-rose-500', bg: 'bg-rose-500/20' },
 };
 
 export default function AnalysisModule({ 
