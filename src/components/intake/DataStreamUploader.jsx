@@ -70,6 +70,7 @@ const iconColorClasses = {
 
 export default function DataStreamUploader({ streamKey, files, onFilesChange }) {
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const config = streamConfig[streamKey];
   const Icon = config.icon;
@@ -78,10 +79,16 @@ export default function DataStreamUploader({ streamKey, files, onFilesChange }) 
     if (!fileList || fileList.length === 0) return;
     
     setUploading(true);
+    setUploadProgress('');
     try {
       const newUrls = [];
+      const totalFiles = fileList.length;
       
-      for (const file of fileList) {
+      for (let i = 0; i < fileList.length; i++) {
+        const file = fileList[i];
+        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
+        setUploadProgress(`Uploading ${file.name} (${fileSizeMB}MB) - ${i + 1}/${totalFiles}`);
+        
         let retries = 0;
         const maxRetries = 3;
         let uploaded = false;
@@ -94,18 +101,21 @@ export default function DataStreamUploader({ streamKey, files, onFilesChange }) 
           } catch (error) {
             retries++;
             if (retries < maxRetries) {
+              setUploadProgress(`Retry ${retries}/${maxRetries} - ${file.name} (${fileSizeMB}MB)`);
               await new Promise(resolve => setTimeout(resolve, Math.pow(2, retries) * 1000));
             } else {
-              throw error;
+              throw new Error(`Failed to upload ${file.name}: ${error.message || 'Network timeout - file may be too large'}`);
             }
           }
         }
       }
       
       onFilesChange([...files, ...newUrls]);
+      setUploadProgress('');
     } catch (error) {
       console.error('Upload failed:', error);
-      alert('Upload failed after multiple attempts. Please try again.');
+      alert(error.message || 'Upload failed. Large video files may timeout - try compressing or using a smaller file.');
+      setUploadProgress('');
     } finally {
       setUploading(false);
     }
@@ -175,7 +185,14 @@ export default function DataStreamUploader({ streamKey, files, onFilesChange }) 
           </div>
           
           {uploading ? (
-            <Loader2 className="h-5 w-5 text-slate-500 animate-spin" />
+            <div className="flex flex-col items-end">
+              <Loader2 className="h-5 w-5 text-slate-500 animate-spin" />
+              {uploadProgress && (
+                <span className="text-xs text-slate-500 mt-1 text-right max-w-[200px] truncate">
+                  {uploadProgress}
+                </span>
+              )}
+            </div>
           ) : files.length > 0 ? (
             <div className="flex items-center gap-2 text-emerald-500">
               <CheckCircle2 className="h-5 w-5" />
