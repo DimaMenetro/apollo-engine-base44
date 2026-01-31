@@ -24,9 +24,9 @@ const streamConfig = {
   },
   stream_b_audio: {
     label: 'Audio Data',
-    description: 'Voice recordings (WAV/MP3/AAC)',
+    description: 'Voice recordings (WAV/MP3/M4A)',
     icon: Music,
-    accept: '.wav,.mp3,.aac',
+    accept: '.wav,.mp3,.m4a,.aac',
     color: 'violet',
   },
   stream_c_video: {
@@ -40,7 +40,7 @@ const streamConfig = {
     label: 'Behavioral Data',
     description: 'Decision logs, purchase history',
     icon: BarChart3,
-    accept: '.csv,.json',
+    accept: '.csv,.json,.xlsx',
     color: 'emerald',
   },
   stream_e_analog: {
