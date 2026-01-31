@@ -98,6 +98,102 @@ export default function Processing() {
     },
   });
 
+  const preprocessFiles = async (fileUrls, moduleKey) => {
+    const info = [];
+    const processedUrls = [];
+    let enhancedPrompt = null;
+
+    for (const url of fileUrls.slice(0, 3)) {
+      const fileName = url.split('/').pop().toLowerCase();
+      const ext = fileName.split('.').pop();
+
+      // XLSX conversion to CSV
+      if (ext === 'xlsx') {
+        try {
+          const csvData = await base44.integrations.Core.InvokeLLM({
+            prompt: `Convert this XLSX file to CSV format. Extract the first sheet. Return ONLY the CSV data with comma-separated values, no explanation.`,
+            file_urls: [url],
+          });
+          
+          info.push(`XLSX converted to CSV: ${fileName}`);
+          // Store CSV data as text for analysis
+          enhancedPrompt = (enhancedPrompt || '') + `\n\nBehavioral data from ${fileName} (converted from XLSX):\n${csvData}`;
+        } catch (error) {
+          info.push(`XLSX conversion failed for ${fileName}. Please export as CSV and re-upload.`);
+          throw new Error(`XLSX conversion failed: ${fileName}`);
+        }
+        continue;
+      }
+
+      // M4A audio processing
+      if (ext === 'm4a' || ext === 'mp3' || ext === 'wav') {
+        try {
+          // Extract acoustic features
+          const acousticAnalysis = await base44.integrations.Core.InvokeLLM({
+            prompt: `Analyze this audio file for acoustic features. Extract and return as JSON:
+- pitch_contour: array of F0 values over time
+- pitch_range: {min, max, mean}
+- pitch_variance: number
+- energy_contour: array of loudness values
+- energy_variance: number
+- speaking_rate: words per minute estimate
+- pause_durations: array of pause lengths in seconds
+- overall_tone: description (e.g., "calm", "agitated", "monotone")`,
+            file_urls: [url],
+            response_json_schema: {
+              type: "object",
+              properties: {
+                pitch_contour: { type: "array", items: { type: "number" } },
+                pitch_range: { type: "object", properties: { min: { type: "number" }, max: { type: "number" }, mean: { type: "number" } } },
+                pitch_variance: { type: "number" },
+                energy_contour: { type: "array", items: { type: "number" } },
+                energy_variance: { type: "number" },
+                speaking_rate: { type: "number" },
+                pause_durations: { type: "array", items: { type: "number" } },
+                overall_tone: { type: "string" }
+              }
+            }
+          });
+
+          // Attempt transcription
+          let transcript = null;
+          try {
+            transcript = await base44.integrations.Core.InvokeLLM({
+              prompt: `Transcribe the speech in this audio file. Return only the transcript text.`,
+              file_urls: [url],
+            });
+            info.push(`${ext.toUpperCase()} processed: acoustic features extracted + transcript generated for ${fileName}`);
+          } catch {
+            info.push(`${ext.toUpperCase()} processed: acoustic features extracted, transcript unavailable (acoustic-only) for ${fileName}`);
+          }
+
+          // Add to enhanced prompt
+          enhancedPrompt = (enhancedPrompt || '') + `\n\nAudio analysis for ${fileName}:\nAcoustic Features: ${JSON.stringify(acousticAnalysis)}\n${transcript ? `Transcript: ${transcript}` : 'Transcript: unavailable'}`;
+        } catch (error) {
+          info.push(`${ext.toUpperCase()} processing failed for ${fileName}. Upload WAV/MP3 or provide transcript.`);
+          throw new Error(`Audio processing failed: ${fileName}`);
+        }
+        continue;
+      }
+
+      // Supported formats: csv, pdf, png, jpg, jpeg - pass through
+      if (['csv', 'pdf', 'png', 'jpg', 'jpeg'].includes(ext)) {
+        processedUrls.push(url);
+        info.push(`${ext.toUpperCase()} processed: ${fileName}`);
+        continue;
+      }
+
+      // Unsupported format
+      info.push(`Unsupported format: ${fileName} (${ext}). Supported: CSV, PDF, PNG, JPG, JPEG, XLSX, M4A, MP3, WAV.`);
+    }
+
+    return {
+      fileUrls: processedUrls,
+      prompt: enhancedPrompt,
+      info: info.join(' | ')
+    };
+  };
+
   const runAnalysis = async () => {
     if (!subject) return;
     
@@ -123,14 +219,15 @@ export default function Processing() {
         // Simulate processing delay
         await new Promise(resolve => setTimeout(resolve, 1500));
 
-        // Run LLM analysis
+        // Get file URLs and preprocess if needed
         const fileUrls = subject[module.requiredStream] || [];
+        const preprocessedData = await preprocessFiles(fileUrls, module.key);
         
         const prompt = getAnalysisPrompt(module.key, subject.name);
         
         const response = await base44.integrations.Core.InvokeLLM({
-          prompt,
-          file_urls: fileUrls.slice(0, 3), // Limit files
+          prompt: preprocessedData.prompt || prompt,
+          file_urls: preprocessedData.fileUrls,
           response_json_schema: {
             type: "object",
             properties: {
@@ -138,13 +235,17 @@ export default function Processing() {
               key_patterns: { type: "array", items: { type: "string" } },
               indicators: { type: "array", items: { type: "string" } },
               confidence: { type: "number" },
-              flags: { type: "array", items: { type: "string" } }
+              flags: { type: "array", items: { type: "string" } },
+              processing_notes: { type: "string" }
             }
           }
         });
 
-        results[module.key] = response;
-        setAnalysisResults(prev => ({ ...prev, [module.key]: response }));
+        results[module.key] = {
+          ...response,
+          preprocessing_info: preprocessedData.info
+        };
+        setAnalysisResults(prev => ({ ...prev, [module.key]: results[module.key] }));
         setModuleStatuses(prev => ({ ...prev, [module.key]: 'complete' }));
         setErrorDetails(prev => ({ ...prev, [module.key]: null }));
       } catch (error) {
@@ -353,6 +454,15 @@ export default function Processing() {
                     Files: {subject[module.requiredStream]?.length || 0} • 
                     Stream: {module.requiredStream}
                   </p>
+                </motion.div>
+              )}
+              {analysisResults[module.key]?.preprocessing_info && status === 'complete' && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="mt-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30"
+                >
+                  <p className="text-xs text-emerald-400">{analysisResults[module.key].preprocessing_info}</p>
                 </motion.div>
               )}
             </div>

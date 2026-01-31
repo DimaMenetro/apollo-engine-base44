@@ -38,9 +38,9 @@ const streamConfig = {
   },
   stream_d_behavioral: {
     label: 'Behavioral Data',
-    description: 'Decision logs, purchase history',
+    description: 'Decision logs, purchase history, any format',
     icon: BarChart3,
-    accept: '.csv,.json,.xlsx',
+    accept: '*',
     color: 'emerald',
   },
   stream_e_analog: {
