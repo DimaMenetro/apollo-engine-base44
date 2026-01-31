@@ -79,6 +79,7 @@ export default function Processing() {
   const [conflicts, setConflicts] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentModule, setCurrentModule] = useState(0);
+  const [errorDetails, setErrorDetails] = useState({});
 
   const { data: subjectData, isLoading } = useQuery({
     queryKey: ['subject', subjectId],
@@ -118,32 +119,40 @@ export default function Processing() {
 
       setModuleStatuses(prev => ({ ...prev, [module.key]: 'running' }));
       
-      // Simulate processing delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      try {
+        // Simulate processing delay
+        await new Promise(resolve => setTimeout(resolve, 1500));
 
-      // Run LLM analysis
-      const fileUrls = subject[module.requiredStream] || [];
-      
-      const prompt = getAnalysisPrompt(module.key, subject.name);
-      
-      const response = await base44.integrations.Core.InvokeLLM({
-        prompt,
-        file_urls: fileUrls.slice(0, 3), // Limit files
-        response_json_schema: {
-          type: "object",
-          properties: {
-            summary: { type: "string" },
-            key_patterns: { type: "array", items: { type: "string" } },
-            indicators: { type: "array", items: { type: "string" } },
-            confidence: { type: "number" },
-            flags: { type: "array", items: { type: "string" } }
+        // Run LLM analysis
+        const fileUrls = subject[module.requiredStream] || [];
+        
+        const prompt = getAnalysisPrompt(module.key, subject.name);
+        
+        const response = await base44.integrations.Core.InvokeLLM({
+          prompt,
+          file_urls: fileUrls.slice(0, 3), // Limit files
+          response_json_schema: {
+            type: "object",
+            properties: {
+              summary: { type: "string" },
+              key_patterns: { type: "array", items: { type: "string" } },
+              indicators: { type: "array", items: { type: "string" } },
+              confidence: { type: "number" },
+              flags: { type: "array", items: { type: "string" } }
+            }
           }
-        }
-      });
+        });
 
-      results[module.key] = response;
-      setAnalysisResults(prev => ({ ...prev, [module.key]: response }));
-      setModuleStatuses(prev => ({ ...prev, [module.key]: 'complete' }));
+        results[module.key] = response;
+        setAnalysisResults(prev => ({ ...prev, [module.key]: response }));
+        setModuleStatuses(prev => ({ ...prev, [module.key]: 'complete' }));
+        setErrorDetails(prev => ({ ...prev, [module.key]: null }));
+      } catch (error) {
+        console.error(`Error analyzing ${module.key}:`, error);
+        setModuleStatuses(prev => ({ ...prev, [module.key]: 'error' }));
+        setErrorDetails(prev => ({ ...prev, [module.key]: error.message || 'Analysis failed' }));
+        // Continue with other modules even if one fails
+      }
     }
 
     // Check for conflicts between modules
@@ -320,17 +329,33 @@ export default function Processing() {
       <div className="space-y-4 mb-8">
         {analysisModules.map((module) => {
           const hasData = subject[module.requiredStream]?.length > 0;
+          const status = !hasData ? 'pending' : moduleStatuses[module.key] || 'pending';
+          const error = errorDetails[module.key];
           return (
-            <AnalysisModule
-              key={module.key}
-              title={module.title}
-              description={module.description}
-              outputLabel={module.outputLabel}
-              icon={module.icon}
-              color={module.color}
-              status={!hasData ? 'pending' : moduleStatuses[module.key] || 'pending'}
-              result={analysisResults[module.key]}
-            />
+            <div key={module.key}>
+              <AnalysisModule
+                title={module.title}
+                description={module.description}
+                outputLabel={module.outputLabel}
+                icon={module.icon}
+                color={module.color}
+                status={status}
+                result={analysisResults[module.key]}
+              />
+              {error && status === 'error' && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="mt-2 p-3 rounded-lg bg-rose-500/10 border border-rose-500/30"
+                >
+                  <p className="text-xs text-rose-400">Error: {error}</p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Files: {subject[module.requiredStream]?.length || 0} • 
+                    Stream: {module.requiredStream}
+                  </p>
+                </motion.div>
+              )}
+            </div>
           );
         })}
       </div>
