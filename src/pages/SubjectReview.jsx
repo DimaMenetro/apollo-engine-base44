@@ -32,10 +32,19 @@ export default function SubjectReview() {
 
   const [isEditing, setIsEditing] = useState(true);
   const [dsp, setDsp] = useState({
+    document_id: '',
+    protocol_version: 'CP-003-O-D-APL v2.1',
+    date_of_synthesis: '',
     confidence_score: 75,
     executive_summary: '',
     classification: '',
     personality_matrix: {},
+    cognitive_architecture: {
+      thinking_style: '',
+      epistemic_requirements: '',
+      defense_mechanisms: ''
+    },
+    behavioral_patterns: [],
     cognitive_map: {},
     action_response_matrix: [],
     motivations: [],
@@ -86,16 +95,21 @@ Generate:
    - Extraversion
    - Agreeableness
    - Neuroticism
-4. 3-5 behavioral predictions with:
+4. Cognitive Architecture:
+   - Thinking Style (2-3 sentences on how the subject processes information and makes decisions)
+   - Epistemic Requirements (2-3 sentences on what the subject needs to know/understand)
+   - Defense Mechanisms (2-3 sentences identifying specific mechanisms like DARVO, Splitting, etc.)
+5. Behavioral Patterns (2-3 patterns with label, description, and context/frequency)
+6. 3-5 behavioral predictions with:
   - Trigger event (what precipitates the behavior)
   - Contextual factors (environmental/social conditions)
   - Predicted behavior (detailed expected response)
   - Probability percentage (0-100)
   - Confidence interval (lower and upper bounds)
   - Temporal factors (timing, duration)
-5. 3-5 core motivations
-6. 3-5 core fears
-7. Confidence score (0-100)`,
+7. 3-5 core motivations
+8. 3-5 core fears
+9. Confidence score (0-100)`,
       response_json_schema: {
         type: "object",
         properties: {
@@ -110,6 +124,25 @@ Generate:
               extraversion: { type: "object", properties: { score: { type: "number" }, evidence: { type: "string" } } },
               agreeableness: { type: "object", properties: { score: { type: "number" }, evidence: { type: "string" } } },
               neuroticism: { type: "object", properties: { score: { type: "number" }, evidence: { type: "string" } } },
+            }
+          },
+          cognitive_architecture: {
+            type: "object",
+            properties: {
+              thinking_style: { type: "string" },
+              epistemic_requirements: { type: "string" },
+              defense_mechanisms: { type: "string" }
+            }
+          },
+          behavioral_patterns: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                label: { type: "string" },
+                description: { type: "string" },
+                context: { type: "string" }
+              }
             }
           },
           predictions: { 
@@ -138,11 +171,23 @@ Generate:
       }
     });
 
+    const today = new Date().toISOString().split('T')[0];
+    const docId = `DSP-${subject.id?.slice(-6) || '000'}-CP-003-APL`;
+    
     setDsp({
+      document_id: docId,
+      protocol_version: 'CP-003-O-D-APL v2.1',
+      date_of_synthesis: today,
       confidence_score: response.confidence_score || 75,
       executive_summary: response.executive_summary || '',
       classification: response.classification || '',
       personality_matrix: response.personality_matrix || {},
+      cognitive_architecture: response.cognitive_architecture || {
+        thinking_style: '',
+        epistemic_requirements: '',
+        defense_mechanisms: ''
+      },
+      behavioral_patterns: response.behavioral_patterns || [],
       cognitive_map: {},
       action_response_matrix: response.predictions || [],
       motivations: response.motivations || [],
@@ -357,6 +402,149 @@ Generate:
             onChange={(data) => setDsp({ ...dsp, action_response_matrix: data })}
             editable={isEditing}
           />
+        </div>
+
+        {/* Cognitive Architecture */}
+        <div className="glass-panel rounded-2xl p-6">
+          <div className="flex items-center gap-2 mb-6">
+            <Brain className="h-4 w-4 text-violet-500" />
+            <h3 className="text-sm font-medium text-slate-200 uppercase tracking-wider">
+              Cognitive Architecture
+            </h3>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs uppercase tracking-wider text-slate-500 mb-2 block">
+                Thinking Style
+              </label>
+              {isEditing ? (
+                <Textarea
+                  value={dsp.cognitive_architecture?.thinking_style || ''}
+                  onChange={(e) => setDsp({ ...dsp, cognitive_architecture: { ...dsp.cognitive_architecture, thinking_style: e.target.value } })}
+                  placeholder="How the subject processes information and makes decisions..."
+                  className="min-h-[80px] bg-slate-900/50 border-slate-700 text-slate-300"
+                />
+              ) : (
+                <p className="text-slate-300 leading-relaxed">{dsp.cognitive_architecture?.thinking_style || 'Not analyzed'}</p>
+              )}
+            </div>
+            <div>
+              <label className="text-xs uppercase tracking-wider text-slate-500 mb-2 block">
+                Epistemic Requirements
+              </label>
+              {isEditing ? (
+                <Textarea
+                  value={dsp.cognitive_architecture?.epistemic_requirements || ''}
+                  onChange={(e) => setDsp({ ...dsp, cognitive_architecture: { ...dsp.cognitive_architecture, epistemic_requirements: e.target.value } })}
+                  placeholder="What the subject needs to know or understand..."
+                  className="min-h-[80px] bg-slate-900/50 border-slate-700 text-slate-300"
+                />
+              ) : (
+                <p className="text-slate-300 leading-relaxed">{dsp.cognitive_architecture?.epistemic_requirements || 'Not analyzed'}</p>
+              )}
+            </div>
+            <div>
+              <label className="text-xs uppercase tracking-wider text-slate-500 mb-2 block">
+                Defense Mechanisms
+              </label>
+              {isEditing ? (
+                <Textarea
+                  value={dsp.cognitive_architecture?.defense_mechanisms || ''}
+                  onChange={(e) => setDsp({ ...dsp, cognitive_architecture: { ...dsp.cognitive_architecture, defense_mechanisms: e.target.value } })}
+                  placeholder="Identified defense mechanisms (e.g., DARVO, Splitting)..."
+                  className="min-h-[80px] bg-slate-900/50 border-slate-700 text-slate-300"
+                />
+              ) : (
+                <p className="text-slate-300 leading-relaxed">{dsp.cognitive_architecture?.defense_mechanisms || 'Not analyzed'}</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Behavioral Patterns */}
+        <div className="glass-panel rounded-2xl p-6">
+          <div className="flex items-center gap-2 mb-6">
+            <GitBranch className="h-4 w-4 text-emerald-500" />
+            <h3 className="text-sm font-medium text-slate-200 uppercase tracking-wider">
+              Behavioral Patterns
+            </h3>
+          </div>
+          <div className="space-y-4">
+            {dsp.behavioral_patterns?.map((pattern, index) => (
+              <div key={index} className="p-4 bg-slate-900/50 rounded-xl border border-slate-800">
+                <div className="mb-2">
+                  <label className="text-xs uppercase tracking-wider text-amber-500 mb-1 block">
+                    Pattern Label
+                  </label>
+                  {isEditing ? (
+                    <Input
+                      value={pattern.label || ''}
+                      onChange={(e) => {
+                        const updated = [...dsp.behavioral_patterns];
+                        updated[index] = { ...pattern, label: e.target.value };
+                        setDsp({ ...dsp, behavioral_patterns: updated });
+                      }}
+                      placeholder="e.g., Crisis Manufacturing"
+                      className="bg-slate-800/50 border-slate-700 text-slate-200"
+                    />
+                  ) : (
+                    <p className="text-slate-200 font-medium">{pattern.label}</p>
+                  )}
+                </div>
+                <div className="mb-2">
+                  <label className="text-xs uppercase tracking-wider text-slate-500 mb-1 block">
+                    Description
+                  </label>
+                  {isEditing ? (
+                    <Textarea
+                      value={pattern.description || ''}
+                      onChange={(e) => {
+                        const updated = [...dsp.behavioral_patterns];
+                        updated[index] = { ...pattern, description: e.target.value };
+                        setDsp({ ...dsp, behavioral_patterns: updated });
+                      }}
+                      placeholder="Describe the pattern..."
+                      className="min-h-[60px] bg-slate-800/50 border-slate-700 text-slate-300"
+                    />
+                  ) : (
+                    <p className="text-slate-300">{pattern.description}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-xs uppercase tracking-wider text-slate-500 mb-1 block">
+                    Context / Frequency
+                  </label>
+                  {isEditing ? (
+                    <Input
+                      value={pattern.context || ''}
+                      onChange={(e) => {
+                        const updated = [...dsp.behavioral_patterns];
+                        updated[index] = { ...pattern, context: e.target.value };
+                        setDsp({ ...dsp, behavioral_patterns: updated });
+                      }}
+                      placeholder="When/how often this occurs..."
+                      className="bg-slate-800/50 border-slate-700 text-slate-300"
+                    />
+                  ) : (
+                    <p className="text-slate-400 text-sm">{pattern.context}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+            {isEditing && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDsp({ ...dsp, behavioral_patterns: [...(dsp.behavioral_patterns || []), { label: '', description: '', context: '' }] })}
+                className="w-full border-slate-700 text-slate-400 hover:bg-slate-800"
+              >
+                Add Pattern
+              </Button>
+            )}
+            {!isEditing && (!dsp.behavioral_patterns || dsp.behavioral_patterns.length === 0) && (
+              <p className="text-sm text-slate-500 text-center py-4">No patterns documented</p>
+            )}
+          </div>
         </div>
 
         {/* Motivations & Fears */}

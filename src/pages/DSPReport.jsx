@@ -122,13 +122,19 @@ export default function DSPReport() {
                 {subject.name}
               </h2>
               
-              <div className="flex items-center gap-4 text-sm text-slate-500">
-                <span className="font-mono">DSP-{subject.id?.slice(-8).toUpperCase()}</span>
-                <span>•</span>
-                <span className="flex items-center gap-1">
-                  <Calendar className="h-3.5 w-3.5" />
-                  {format(new Date(subject.updated_date || subject.created_date), 'PPP')}
-                </span>
+              <div className="space-y-1 text-sm text-slate-500">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs uppercase tracking-wider text-slate-600">Document ID:</span>
+                  <span className="font-mono">{dsp.document_id || `DSP-${subject.id?.slice(-6) || '000'}-CP-003-APL`}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs uppercase tracking-wider text-slate-600">Protocol:</span>
+                  <span className="font-mono">{dsp.protocol_version || 'CP-003-O-D-APL v2.1'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs uppercase tracking-wider text-slate-600">Date of Synthesis:</span>
+                  <span className="font-mono">{dsp.date_of_synthesis || new Date().toISOString().split('T')[0]}</span>
+                </div>
               </div>
             </div>
             
@@ -172,6 +178,59 @@ export default function DSPReport() {
           </div>
           <PersonalityMatrix data={dsp.personality_matrix} editable={false} />
         </div>
+
+        {/* Cognitive Architecture */}
+        {dsp.cognitive_architecture && (
+          <div className="glass-panel rounded-2xl p-6">
+            <div className="flex items-center gap-2 mb-6">
+              <Brain className="h-4 w-4 text-violet-500" />
+              <h3 className="text-sm font-medium text-slate-200 uppercase tracking-wider">
+                Cognitive Architecture
+              </h3>
+            </div>
+            <div className="space-y-4">
+              {dsp.cognitive_architecture.thinking_style && (
+                <div>
+                  <h4 className="text-xs uppercase tracking-wider text-slate-500 mb-2">Thinking Style</h4>
+                  <p className="text-slate-300 leading-relaxed">{dsp.cognitive_architecture.thinking_style}</p>
+                </div>
+              )}
+              {dsp.cognitive_architecture.epistemic_requirements && (
+                <div>
+                  <h4 className="text-xs uppercase tracking-wider text-slate-500 mb-2">Epistemic Requirements</h4>
+                  <p className="text-slate-300 leading-relaxed">{dsp.cognitive_architecture.epistemic_requirements}</p>
+                </div>
+              )}
+              {dsp.cognitive_architecture.defense_mechanisms && (
+                <div>
+                  <h4 className="text-xs uppercase tracking-wider text-slate-500 mb-2">Defense Mechanisms</h4>
+                  <p className="text-slate-300 leading-relaxed">{dsp.cognitive_architecture.defense_mechanisms}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Behavioral Patterns */}
+        {dsp.behavioral_patterns && dsp.behavioral_patterns.length > 0 && (
+          <div className="glass-panel rounded-2xl p-6">
+            <div className="flex items-center gap-2 mb-6">
+              <GitBranch className="h-4 w-4 text-emerald-500" />
+              <h3 className="text-sm font-medium text-slate-200 uppercase tracking-wider">
+                Behavioral Patterns
+              </h3>
+            </div>
+            <div className="space-y-4">
+              {dsp.behavioral_patterns.map((pattern, index) => (
+                <div key={index} className="p-4 bg-slate-900/50 rounded-xl border border-slate-800">
+                  <h4 className="text-sm font-medium text-amber-400 mb-2">{pattern.label}</h4>
+                  <p className="text-slate-300 mb-2 leading-relaxed">{pattern.description}</p>
+                  <p className="text-xs text-slate-500 italic">{pattern.context}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Predictive Model */}
         <div className="glass-panel rounded-2xl p-6">
