@@ -79,7 +79,7 @@ export default function DataStreamUploader({ streamKey, files, onFilesChange }) 
     if (!fileList || fileList.length === 0) return;
     
     // Validate file sizes before upload
-    const MAX_VIDEO_SIZE_MB = 100; // ~2-5 min video at standard quality
+    const MAX_VIDEO_SIZE_MB = 500; // Up to ~5 minutes at high quality
     const MAX_FILE_SIZE_MB = 50;
     
     for (const file of fileList) {
