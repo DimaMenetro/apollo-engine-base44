@@ -78,6 +78,25 @@ export default function DataStreamUploader({ streamKey, files, onFilesChange }) 
   const handleUpload = async (fileList) => {
     if (!fileList || fileList.length === 0) return;
     
+    // Validate file sizes before upload
+    const MAX_VIDEO_SIZE_MB = 100; // ~2-5 min video at standard quality
+    const MAX_FILE_SIZE_MB = 50;
+    
+    for (const file of fileList) {
+      const fileSizeMB = file.size / (1024 * 1024);
+      const isVideo = file.type.startsWith('video/') || ['.mp4', '.mov', '.avi', '.webm'].some(ext => file.name.toLowerCase().endsWith(ext));
+      
+      if (isVideo && fileSizeMB > MAX_VIDEO_SIZE_MB) {
+        alert(`Video file "${file.name}" is too large (${fileSizeMB.toFixed(1)}MB). Maximum: ${MAX_VIDEO_SIZE_MB}MB (~5 minutes). Please compress or trim the video.`);
+        return;
+      }
+      
+      if (!isVideo && fileSizeMB > MAX_FILE_SIZE_MB) {
+        alert(`File "${file.name}" is too large (${fileSizeMB.toFixed(1)}MB). Maximum: ${MAX_FILE_SIZE_MB}MB.`);
+        return;
+      }
+    }
+    
     setUploading(true);
     setUploadProgress('');
     try {
