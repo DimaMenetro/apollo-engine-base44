@@ -55,7 +55,7 @@ const analysisModules = [
     outputLabel: 'Affective State',
     icon: Activity,
     color: 'rose',
-    requiredStream: 'stream_b_audio',
+    requiredStreams: ['stream_b_audio', 'stream_c_video'],
   },
   {
     key: 'behavioral_loop',
@@ -125,8 +125,8 @@ export default function Processing() {
         continue;
       }
 
-      // Audio processing with Hume.ai prosody analysis
-      if (ext === 'm4a' || ext === 'mp3' || ext === 'wav') {
+      // Audio/Video processing with Hume.ai analysis
+      if (ext === 'm4a' || ext === 'mp3' || ext === 'wav' || ext === 'mp4' || ext === 'mov') {
         try {
           const acousticAnalysis = await base44.functions.invoke('analyzeAudio', {
             file_url: url
@@ -135,19 +135,20 @@ export default function Processing() {
           let transcript = null;
           try {
             transcript = await base44.integrations.Core.InvokeLLM({
-              prompt: `Transcribe the speech in this audio file. Return only the transcript text.`,
+              prompt: `Transcribe the speech in this ${ext === 'mp4' || ext === 'mov' ? 'video' : 'audio'} file. Return only the transcript text.`,
               file_urls: [url],
             });
-            info.push(`${ext.toUpperCase()} processed: prosody analyzed + transcript generated for ${fileName}`);
-          } catch {
-            info.push(`${ext.toUpperCase()} processed: prosody analyzed, transcript unavailable for ${fileName}`);
-          }
+            info.push(`${ext.toUpperCase()} processed: ${ext === 'mp4' || ext === 'mov' ? 'facial/prosody' : 'prosody'} analyzed + transcript generated for ${fileName}`);
+            } catch {
+            info.push(`${ext.toUpperCase()} processed: ${ext === 'mp4' || ext === 'mov' ? 'facial/prosody' : 'prosody'} analyzed, transcript unavailable for ${fileName}`);
+            }
 
-          enhancedPrompt = (enhancedPrompt || '') + `\n\nAudio analysis for ${fileName}:\nProsody & Emotion Data: ${JSON.stringify(acousticAnalysis.data)}\n${transcript ? `Transcript: ${transcript}` : 'Transcript: unavailable'}`;
-        } catch (error) {
-          info.push(`${ext.toUpperCase()} processing failed for ${fileName}: ${error.message}`);
-          throw new Error(`Audio processing failed: ${fileName} - ${error.message}`);
-        }
+            const mediaType = (ext === 'mp4' || ext === 'mov') ? 'Video' : 'Audio';
+            enhancedPrompt = (enhancedPrompt || '') + `\n\n${mediaType} analysis for ${fileName}:\n${mediaType === 'Video' ? 'Facial Expression & ' : ''}Prosody & Emotion Data: ${JSON.stringify(acousticAnalysis.data)}\n${transcript ? `Transcript: ${transcript}` : 'Transcript: unavailable'}`;
+            } catch (error) {
+            info.push(`${ext.toUpperCase()} processing failed for ${fileName}: ${error.message}`);
+            throw new Error(`${ext === 'mp4' || ext === 'mov' ? 'Video' : 'Audio'} processing failed: ${fileName} - ${error.message}`);
+            }
         continue;
       }
 
@@ -159,7 +160,7 @@ export default function Processing() {
       }
 
       // Unsupported format
-      info.push(`Unsupported format: ${fileName} (${ext}). Supported: CSV, PDF, PNG, JPG, JPEG, XLSX, M4A, MP3, WAV.`);
+      info.push(`Unsupported format: ${fileName} (${ext}). Supported: CSV, PDF, PNG, JPG, JPEG, XLSX, M4A, MP3, WAV, MP4, MOV.`);
     }
 
     return {
@@ -179,9 +180,11 @@ export default function Processing() {
     for (let i = 0; i < analysisModules.length; i++) {
       const module = analysisModules[i];
       setCurrentModule(i);
-      
-      // Check if required stream has data
-      const hasData = subject[module.requiredStream]?.length > 0;
+
+      // Check if required stream(s) has data
+      const hasData = module.requiredStreams 
+        ? module.requiredStreams.some(stream => subject[stream]?.length > 0)
+        : subject[module.requiredStream]?.length > 0;
       
       if (!hasData) {
         setModuleStatuses(prev => ({ ...prev, [module.key]: 'pending' }));
@@ -195,7 +198,9 @@ export default function Processing() {
         await new Promise(resolve => setTimeout(resolve, 1500));
 
         // Get file URLs and preprocess if needed
-        const fileUrls = subject[module.requiredStream] || [];
+        const fileUrls = module.requiredStreams 
+          ? module.requiredStreams.flatMap(stream => subject[stream] || [])
+          : (subject[module.requiredStream] || []);
         const preprocessedData = await preprocessFiles(fileUrls, module.key);
         
         const prompt = getAnalysisPrompt(module.key, subject.name);
@@ -295,10 +300,10 @@ export default function Processing() {
 - Psychomotor state indicators`,
       
       affective_state: `Analyze the attached audio/video for subject "${subjectName}":
-- Vocal pitch variations and tone
-- Micro-expression indicators
-- Emotional baseline assessment
-- Congruence between verbal and non-verbal cues`,
+      - Vocal pitch variations and tone
+      - Facial micro-expressions (if video available)
+      - Emotional baseline assessment
+      - Congruence between verbal and non-verbal cues`,
       
       behavioral_loop: `Analyze the attached behavioral data for subject "${subjectName}":
 - Action timing patterns
@@ -313,6 +318,13 @@ export default function Processing() {
   const progress = Object.values(moduleStatuses).filter(s => s === 'complete' || s === 'conflict').length;
   const totalWithData = analysisModules.filter(m => subject?.[m.requiredStream]?.length > 0).length;
   const progressPercent = totalWithData > 0 ? (progress / totalWithData) * 100 : 0;
+
+  // Helper to check if module has data
+  const moduleHasData = (module) => {
+    return module.requiredStreams 
+      ? module.requiredStreams.some(stream => subject?.[stream]?.length > 0)
+      : subject?.[module.requiredStream]?.length > 0;
+  };
 
   if (isLoading) {
     return (
@@ -404,9 +416,15 @@ export default function Processing() {
       {/* Analysis Modules */}
       <div className="space-y-4 mb-8">
         {analysisModules.map((module) => {
-          const hasData = subject[module.requiredStream]?.length > 0;
+          const hasData = moduleHasData(module);
           const status = !hasData ? 'pending' : moduleStatuses[module.key] || 'pending';
           const error = errorDetails[module.key];
+          const fileCount = module.requiredStreams 
+            ? module.requiredStreams.reduce((sum, stream) => sum + (subject[stream]?.length || 0), 0)
+            : (subject[module.requiredStream]?.length || 0);
+          const streamInfo = module.requiredStreams 
+            ? module.requiredStreams.join(', ')
+            : module.requiredStream;
           return (
             <div key={module.key}>
               <AnalysisModule
@@ -426,8 +444,8 @@ export default function Processing() {
                 >
                   <p className="text-xs text-rose-400">Error: {error}</p>
                   <p className="text-xs text-slate-500 mt-1">
-                    Files: {subject[module.requiredStream]?.length || 0} • 
-                    Stream: {module.requiredStream}
+                    Files: {fileCount} • 
+                    Stream: {streamInfo}
                   </p>
                 </motion.div>
               )}
