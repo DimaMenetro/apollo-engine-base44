@@ -23,6 +23,7 @@ import ActionResponseMatrix from '../components/review/ActionResponseMatrix';
 import MotivationsSection from '../components/review/MotivationsSection';
 import DataStreamUploader from '../components/intake/DataStreamUploader';
 import { motion } from 'framer-motion';
+import { formatDocumentId } from '../components/utils/formatDocumentId';
 
 export default function SubjectReview() {
   const navigate = useNavigate();
@@ -258,7 +259,7 @@ Generate:
               Review: {subject.name}
             </h1>
             <p className="text-sm text-slate-500 mt-1">
-              DSP-{subject.id?.slice(-8).toUpperCase()} • Draft Profile
+              {formatDocumentId(dsp.document_id || `DSP-${subject.id?.slice(-6) || '000'}-CP-003-APL`)} • Draft Profile
             </p>
           </div>
         </div>

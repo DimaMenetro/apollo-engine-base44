@@ -22,6 +22,7 @@ import PersonalityMatrix from '../components/review/PersonalityMatrix';
 import ActionResponseMatrix from '../components/review/ActionResponseMatrix';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { formatDocumentId } from '../components/utils/formatDocumentId';
 
 export default function DSPReport() {
   const navigate = useNavigate();
@@ -125,7 +126,7 @@ export default function DSPReport() {
               <div className="space-y-1 text-sm text-slate-500">
                 <div className="flex items-center gap-2">
                   <span className="text-xs uppercase tracking-wider text-slate-600">Document ID:</span>
-                  <span className="font-mono">{dsp.document_id || `DSP-${subject.id?.slice(-6) || '000'}-CP-003-APL`}</span>
+                  <span className="font-mono">{formatDocumentId(dsp.document_id || `DSP-${subject.id?.slice(-6) || '000'}-CP-003-APL`)}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs uppercase tracking-wider text-slate-600">Protocol:</span>
