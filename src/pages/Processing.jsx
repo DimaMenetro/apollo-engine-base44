@@ -125,53 +125,28 @@ export default function Processing() {
         continue;
       }
 
-      // M4A audio processing
+      // Audio processing with Hume.ai prosody analysis
       if (ext === 'm4a' || ext === 'mp3' || ext === 'wav') {
         try {
-          // Extract acoustic features
-          const acousticAnalysis = await base44.integrations.Core.InvokeLLM({
-            prompt: `Analyze this audio file for acoustic features. Extract and return as JSON:
-- pitch_contour: array of F0 values over time
-- pitch_range: {min, max, mean}
-- pitch_variance: number
-- energy_contour: array of loudness values
-- energy_variance: number
-- speaking_rate: words per minute estimate
-- pause_durations: array of pause lengths in seconds
-- overall_tone: description (e.g., "calm", "agitated", "monotone")`,
-            file_urls: [url],
-            response_json_schema: {
-              type: "object",
-              properties: {
-                pitch_contour: { type: "array", items: { type: "number" } },
-                pitch_range: { type: "object", properties: { min: { type: "number" }, max: { type: "number" }, mean: { type: "number" } } },
-                pitch_variance: { type: "number" },
-                energy_contour: { type: "array", items: { type: "number" } },
-                energy_variance: { type: "number" },
-                speaking_rate: { type: "number" },
-                pause_durations: { type: "array", items: { type: "number" } },
-                overall_tone: { type: "string" }
-              }
-            }
+          const acousticAnalysis = await base44.functions.invoke('analyzeAudio', {
+            file_url: url
           });
 
-          // Attempt transcription
           let transcript = null;
           try {
             transcript = await base44.integrations.Core.InvokeLLM({
               prompt: `Transcribe the speech in this audio file. Return only the transcript text.`,
               file_urls: [url],
             });
-            info.push(`${ext.toUpperCase()} processed: acoustic features extracted + transcript generated for ${fileName}`);
+            info.push(`${ext.toUpperCase()} processed: prosody analyzed + transcript generated for ${fileName}`);
           } catch {
-            info.push(`${ext.toUpperCase()} processed: acoustic features extracted, transcript unavailable (acoustic-only) for ${fileName}`);
+            info.push(`${ext.toUpperCase()} processed: prosody analyzed, transcript unavailable for ${fileName}`);
           }
 
-          // Add to enhanced prompt
-          enhancedPrompt = (enhancedPrompt || '') + `\n\nAudio analysis for ${fileName}:\nAcoustic Features: ${JSON.stringify(acousticAnalysis)}\n${transcript ? `Transcript: ${transcript}` : 'Transcript: unavailable'}`;
+          enhancedPrompt = (enhancedPrompt || '') + `\n\nAudio analysis for ${fileName}:\nProsody & Emotion Data: ${JSON.stringify(acousticAnalysis.data)}\n${transcript ? `Transcript: ${transcript}` : 'Transcript: unavailable'}`;
         } catch (error) {
-          info.push(`${ext.toUpperCase()} processing failed for ${fileName}. Upload WAV/MP3 or provide transcript.`);
-          throw new Error(`Audio processing failed: ${fileName}`);
+          info.push(`${ext.toUpperCase()} processing failed for ${fileName}: ${error.message}`);
+          throw new Error(`Audio processing failed: ${fileName} - ${error.message}`);
         }
         continue;
       }
