@@ -22,7 +22,7 @@ export default function Layout({ children, currentPageName }) {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen text-slate-100 relative">
       <style>{`
         :root {
           --background: 222.2 84% 4.9%;
