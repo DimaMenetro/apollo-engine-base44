@@ -336,7 +336,7 @@ Generate:
             </div>
           </div>
           
-          <div className="glass-panel rounded-2xl p-6">
+          <div className="glass-panel rounded-3xl p-6">
             <label className="text-xs uppercase tracking-wider text-slate-500 mb-2 block">
               Classification
             </label>
@@ -354,7 +354,7 @@ Generate:
         </div>
 
         {/* Executive Summary */}
-        <div className="glass-panel rounded-2xl p-6">
+        <div className="glass-panel rounded-3xl p-6">
           <div className="flex items-center gap-2 mb-4">
             <FileText className="h-4 w-4 text-amber-500" />
             <h3 className="text-sm font-medium text-slate-200 uppercase tracking-wider">
@@ -376,7 +376,7 @@ Generate:
         </div>
 
         {/* Personality Matrix */}
-        <div className="glass-panel rounded-2xl p-6">
+        <div className="glass-panel rounded-3xl p-6">
           <div className="flex items-center gap-2 mb-6">
             <Brain className="h-4 w-4 text-violet-500" />
             <h3 className="text-sm font-medium text-slate-200 uppercase tracking-wider">
@@ -391,7 +391,7 @@ Generate:
         </div>
 
         {/* Action/Response Matrix */}
-        <div className="glass-panel rounded-2xl p-6">
+        <div className="glass-panel rounded-3xl p-6">
           <div className="flex items-center gap-2 mb-6">
             <GitBranch className="h-4 w-4 text-emerald-500" />
             <h3 className="text-sm font-medium text-slate-200 uppercase tracking-wider">
@@ -406,7 +406,7 @@ Generate:
         </div>
 
         {/* Cognitive Architecture */}
-        <div className="glass-panel rounded-2xl p-6">
+        <div className="glass-panel rounded-3xl p-6">
           <div className="flex items-center gap-2 mb-6">
             <Brain className="h-4 w-4 text-violet-500" />
             <h3 className="text-sm font-medium text-slate-200 uppercase tracking-wider">
@@ -463,7 +463,7 @@ Generate:
         </div>
 
         {/* Behavioral Patterns */}
-        <div className="glass-panel rounded-2xl p-6">
+        <div className="glass-panel rounded-3xl p-6">
           <div className="flex items-center gap-2 mb-6">
             <GitBranch className="h-4 w-4 text-emerald-500" />
             <h3 className="text-sm font-medium text-slate-200 uppercase tracking-wider">
@@ -549,7 +549,7 @@ Generate:
         </div>
 
         {/* Motivations & Fears */}
-        <div className="glass-panel rounded-2xl p-6">
+        <div className="glass-panel rounded-3xl p-6">
           <h3 className="text-sm font-medium text-slate-200 uppercase tracking-wider mb-6">
             Core Drivers
           </h3>
@@ -564,7 +564,7 @@ Generate:
 
         {/* Additional Evidence Upload */}
         {isEditing && (
-          <div className="glass-panel rounded-2xl p-6">
+          <div className="glass-panel rounded-3xl p-6">
             <h3 className="text-sm font-medium text-slate-200 uppercase tracking-wider mb-6">
               Additional Evidence
             </h3>

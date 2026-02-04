@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { 
   CheckCircle2, 
   Loader2, 
   Circle,
-  AlertTriangle
+  AlertTriangle,
+  ChevronDown
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import EmotionRadarChart from '../visualizations/EmotionRadarChart';
 
 const statusConfig = {
   pending: { icon: Circle, color: 'text-slate-600', bg: 'bg-slate-600/20' },
@@ -23,8 +25,10 @@ export default function AnalysisModule({
   status = 'pending',
   result,
   icon: Icon,
-  color = 'amber'
+  color = 'amber',
+  moduleKey
 }) {
+  const [expanded, setExpanded] = useState(false);
   const statusInfo = statusConfig[status];
   const StatusIcon = statusInfo.icon;
 
@@ -44,12 +48,36 @@ export default function AnalysisModule({
     cyan: 'text-cyan-500 bg-cyan-500/10',
   };
 
+  // Extract emotion data for radar chart (affective_state module)
+  const getEmotionData = () => {
+    if (moduleKey !== 'affective_state' || !result) return null;
+    
+    // Parse emotion data from Hume.ai results
+    try {
+      const indicators = result.indicators || [];
+      return indicators
+        .filter(ind => ind.includes(':'))
+        .map(ind => {
+          const [name, scoreStr] = ind.split(':');
+          return { 
+            name: name.trim().toLowerCase(), 
+            score: parseFloat(scoreStr) || 0 
+          };
+        })
+        .filter(e => e.score > 0);
+    } catch {
+      return null;
+    }
+  };
+
+  const emotionData = getEmotionData();
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        "glass-panel rounded-xl p-5 border-l-2",
+        "glass-panel rounded-3xl p-5 border-l-2 transition-all duration-300 hover:shadow-xl hover:shadow-amber-500/5",
         colorClasses[color],
         status === 'running' && 'glow-amber'
       )}
@@ -85,11 +113,51 @@ export default function AnalysisModule({
           </div>
           
           {result && status === 'complete' && (
-            <div className="mt-3 pt-3 border-t border-slate-800">
-              <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Key Findings</p>
-              <p className="text-sm text-slate-400 line-clamp-3">
-                {typeof result === 'string' ? result : JSON.stringify(result).slice(0, 150)}...
-              </p>
+            <div className="mt-4 space-y-3">
+              {result.summary && (
+                <div>
+                  <h4 className="text-xs uppercase tracking-wider text-slate-500 mb-2">Summary</h4>
+                  <p className="text-sm text-slate-300 leading-relaxed">{result.summary}</p>
+                </div>
+              )}
+              
+              {emotionData && emotionData.length > 0 && (
+                <div>
+                  <button
+                    onClick={() => setExpanded(!expanded)}
+                    className="flex items-center justify-between w-full text-xs uppercase tracking-wider text-slate-500 mb-2 hover:text-amber-500 transition-colors"
+                  >
+                    <span>Emotion Distribution</span>
+                    <ChevronDown className={cn("h-3 w-3 transition-transform", expanded && "rotate-180")} />
+                  </button>
+                  <AnimatePresence>
+                    {expanded && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <EmotionRadarChart emotionData={emotionData} />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
+              
+              {result.key_patterns?.length > 0 && (
+                <div>
+                  <h4 className="text-xs uppercase tracking-wider text-slate-500 mb-2">Key Patterns</h4>
+                  <ul className="space-y-1">
+                    {result.key_patterns.slice(0, 3).map((pattern, i) => (
+                      <li key={i} className="text-sm text-slate-400 flex items-start gap-2">
+                        <span className="text-amber-500 mt-1">•</span>
+                        <span>{pattern}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
         </div>
