@@ -118,13 +118,13 @@ export default function Layout({ children, currentPageName }) {
       {/* Gradient Background - Liquid Glass Style */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
         {/* Main gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-amber-950/40 via-slate-950 to-violet-950/40" />
+        <div className="absolute inset-0 bg-gradient-to-br from-amber-900/60 via-slate-950 to-violet-900/60" />
         
         {/* Animated gradient orbs */}
         <div className="absolute top-0 left-0 w-full h-full">
-          <div className="absolute top-[-10%] left-[-5%] w-[50%] h-[50%] bg-gradient-to-br from-amber-500/40 via-amber-600/20 to-transparent rounded-full blur-[120px] animate-pulse" style={{ animationDuration: '8s' }} />
-          <div className="absolute bottom-[-10%] right-[-5%] w-[60%] h-[60%] bg-gradient-to-tl from-violet-500/30 via-purple-600/20 to-transparent rounded-full blur-[120px] animate-pulse" style={{ animationDuration: '12s' }} />
-          <div className="absolute top-[30%] right-[10%] w-[40%] h-[40%] bg-gradient-to-bl from-cyan-500/25 via-blue-600/15 to-transparent rounded-full blur-[100px] animate-pulse" style={{ animationDuration: '10s' }} />
+          <div className="absolute top-[-10%] left-[-5%] w-[50%] h-[50%] bg-gradient-to-br from-amber-500/60 via-amber-600/40 to-transparent rounded-full blur-[120px] animate-pulse" style={{ animationDuration: '8s' }} />
+          <div className="absolute bottom-[-10%] right-[-5%] w-[60%] h-[60%] bg-gradient-to-tl from-violet-500/50 via-purple-600/35 to-transparent rounded-full blur-[120px] animate-pulse" style={{ animationDuration: '12s' }} />
+          <div className="absolute top-[30%] right-[10%] w-[40%] h-[40%] bg-gradient-to-bl from-cyan-500/45 via-blue-600/30 to-transparent rounded-full blur-[100px] animate-pulse" style={{ animationDuration: '10s' }} />
         </div>
       </div>
     </div>
