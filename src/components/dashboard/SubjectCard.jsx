@@ -38,7 +38,7 @@ export default function SubjectCard({ subject }) {
   return (
     <Link 
       to={createPageUrl(getTargetPage())}
-      className="block glass-panel rounded-2xl p-5 hover:border-slate-600 transition-all duration-300 group"
+      className="block glass-panel rounded-3xl p-5 hover:bg-slate-900/40 transition-all duration-300 group hover:shadow-2xl hover:shadow-amber-500/10 hover:scale-[1.02]"
     >
       <div className="flex items-start justify-between mb-4">
         <div>
