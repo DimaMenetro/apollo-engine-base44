@@ -115,11 +115,20 @@ export default function Layout({ children, currentPageName }) {
         </div>
       </main>
       
-      {/* Ambient Background - Enhanced */}
+      {/* Gradient Background - Liquid Glass Style */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
-        <div className="absolute top-1/4 -left-1/4 w-[600px] h-[600px] bg-amber-500/8 rounded-full blur-[120px] animate-pulse" style={{ animationDuration: '8s' }} />
-        <div className="absolute bottom-1/4 -right-1/4 w-[500px] h-[500px] bg-violet-500/6 rounded-full blur-[100px] animate-pulse" style={{ animationDuration: '10s' }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-cyan-500/4 rounded-full blur-[100px]" />
+        {/* Main gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900" />
+        
+        {/* Animated gradient orbs */}
+        <div className="absolute top-0 left-0 w-full h-full">
+          <div className="absolute top-[-10%] left-[-5%] w-[50%] h-[50%] bg-gradient-to-br from-amber-500/20 via-amber-600/10 to-transparent rounded-full blur-[120px] animate-pulse" style={{ animationDuration: '8s' }} />
+          <div className="absolute bottom-[-10%] right-[-5%] w-[60%] h-[60%] bg-gradient-to-tl from-violet-500/15 via-purple-600/10 to-transparent rounded-full blur-[120px] animate-pulse" style={{ animationDuration: '12s' }} />
+          <div className="absolute top-[30%] right-[10%] w-[40%] h-[40%] bg-gradient-to-bl from-cyan-500/10 via-blue-600/8 to-transparent rounded-full blur-[100px] animate-pulse" style={{ animationDuration: '10s' }} />
+        </div>
+        
+        {/* Subtle noise texture overlay */}
+        <div className="absolute inset-0 opacity-[0.015] mix-blend-overlay" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 400 400\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noiseFilter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noiseFilter)\'/%3E%3C/svg%3E")' }} />
       </div>
     </div>
   );
