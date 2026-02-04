@@ -56,14 +56,21 @@ export default function Layout({ children, currentPageName }) {
         }
         
         .glass-panel {
-          background: rgba(15, 23, 42, 0.6);
-          backdrop-filter: blur(12px);
-          border: 1px solid rgba(51, 65, 85, 0.5);
+          background: rgba(15, 23, 42, 0.3);
+          backdrop-filter: blur(24px);
+          border: 1px solid rgba(100, 116, 139, 0.2);
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        .glass-panel-thick {
+          background: rgba(15, 23, 42, 0.5);
+          backdrop-filter: blur(20px);
+          border: 1px solid rgba(100, 116, 139, 0.3);
         }
       `}</style>
       
-      {/* Top Navigation Bar */}
-      <header className="fixed top-0 left-0 right-0 z-50 glass-panel border-b border-slate-800/50">
+      {/* Top Navigation Bar - Liquid Glass */}
+      <header className="fixed top-0 left-0 right-0 z-50 backdrop-blur-3xl bg-slate-950/40 border-b border-slate-700/30 shadow-2xl shadow-amber-500/5">
         <div className="flex items-center justify-between px-6 h-16">
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -86,10 +93,10 @@ export default function Layout({ children, currentPageName }) {
                   key={item.name}
                   to={createPageUrl(item.page)}
                   className={cn(
-                    "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                    "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 backdrop-blur-xl",
                     isActive 
-                      ? "bg-amber-500/10 text-amber-500 glow-amber" 
-                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                      ? "bg-amber-500/20 text-amber-400 shadow-lg shadow-amber-500/20 border border-amber-500/30" 
+                      : "text-slate-300 hover:text-slate-100 hover:bg-white/10 border border-transparent hover:border-white/20"
                   )}
                 >
                   <item.icon className="h-4 w-4" />
@@ -108,10 +115,11 @@ export default function Layout({ children, currentPageName }) {
         </div>
       </main>
       
-      {/* Ambient Background */}
+      {/* Ambient Background - Enhanced */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
-        <div className="absolute top-1/4 -left-1/4 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 -right-1/4 w-96 h-96 bg-slate-500/5 rounded-full blur-3xl" />
+        <div className="absolute top-1/4 -left-1/4 w-[600px] h-[600px] bg-amber-500/8 rounded-full blur-[120px] animate-pulse" style={{ animationDuration: '8s' }} />
+        <div className="absolute bottom-1/4 -right-1/4 w-[500px] h-[500px] bg-violet-500/6 rounded-full blur-[100px] animate-pulse" style={{ animationDuration: '10s' }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-cyan-500/4 rounded-full blur-[100px]" />
       </div>
     </div>
   );

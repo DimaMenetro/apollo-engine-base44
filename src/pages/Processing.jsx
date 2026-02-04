@@ -372,7 +372,7 @@ export default function Processing() {
       </div>
 
       {/* Progress */}
-      <div className="glass-panel rounded-2xl p-6 mb-6">
+      <div className="glass-panel-thick rounded-3xl p-6 mb-6">
         <div className="flex items-center justify-between mb-3">
           <span className="text-sm text-slate-400">Analysis Progress</span>
           <span className="text-sm text-amber-500">{Math.round(progressPercent)}%</span>
@@ -435,6 +435,7 @@ export default function Processing() {
                 color={module.color}
                 status={status}
                 result={analysisResults[module.key]}
+                moduleKey={module.key}
               />
               {error && status === 'error' && (
                 <motion.div

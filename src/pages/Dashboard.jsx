@@ -147,7 +147,7 @@ export default function Dashboard() {
             ))}
           </div>
         ) : (
-          <div className="glass-panel rounded-2xl p-12 text-center">
+          <div className="glass-panel rounded-3xl p-12 text-center">
             <Users className="h-12 w-12 text-slate-700 mx-auto mb-4" />
             <h3 className="text-slate-400 mb-2">No subjects yet</h3>
             <p className="text-sm text-slate-600 mb-6">

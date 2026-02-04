@@ -118,7 +118,7 @@ export default function Reports() {
       </div>
 
       {/* Table */}
-      <div className="glass-panel rounded-2xl overflow-hidden">
+      <div className="glass-panel rounded-3xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
