@@ -3,8 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { useTheme } from '../components/theme/ThemeProvider';
+import { light, dark, glassCard, glassBtnSecondary } from '../components/ui/LiquidGlass';
 import { 
   ArrowLeft, 
   Loader2,
@@ -14,19 +14,20 @@ import {
   Target,
   Shield,
   Download,
-  Calendar,
   Lock,
   CheckCircle2
 } from 'lucide-react';
 import PersonalityMatrix from '../components/review/PersonalityMatrix';
 import ActionResponseMatrix from '../components/review/ActionResponseMatrix';
 import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
 import { formatDocumentId } from '../components/utils/formatDocumentId';
 
 export default function DSPReport() {
   const navigate = useNavigate();
   const reportRef = useRef(null);
+  const { isDark } = useTheme();
+  const t = isDark ? dark : light;
+
   const urlParams = new URLSearchParams(window.location.search);
   const subjectId = urlParams.get('id');
 
@@ -40,270 +41,250 @@ export default function DSPReport() {
   const subject = subjectData?.[0];
   const dsp = subject?.dsp || {};
 
-  const getConfidenceColor = (score) => {
-    if (score >= 80) return 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30';
-    if (score >= 60) return 'text-amber-500 bg-amber-500/10 border-amber-500/30';
-    return 'text-rose-500 bg-rose-500/10 border-rose-500/30';
+  const getConfidenceStyle = (score) => {
+    if (score >= 80) return { color: '#10b981', bg: 'rgba(16,185,129,0.10)', border: 'rgba(16,185,129,0.30)' };
+    if (score >= 60) return { color: '#f59e0b', bg: 'rgba(245,158,11,0.10)', border: 'rgba(245,158,11,0.30)' };
+    return { color: '#f43f5e', bg: 'rgba(244,63,94,0.10)', border: 'rgba(244,63,94,0.30)' };
   };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 text-amber-500 animate-spin" />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <Loader2 style={{ width: 32, height: 32, color: '#f59e0b', animation: 'spin 1s linear infinite' }} />
       </div>
     );
   }
 
   if (!subject) {
     return (
-      <div className="max-w-4xl mx-auto text-center py-20">
-        <p className="text-slate-500">Subject not found</p>
-        <Button 
-          variant="outline" 
+      <div style={{ maxWidth: 600, margin: '0 auto', textAlign: 'center', padding: '80px 20px' }}>
+        <p style={{ color: t.muted, marginBottom: 16 }}>Subject not found</p>
+        <button
           onClick={() => navigate(createPageUrl('Dashboard'))}
-          className="mt-4"
+          style={{ ...glassBtnSecondary(t), padding: '10px 24px', fontSize: 14 }}
         >
           Return to Dashboard
-        </Button>
+        </button>
       </div>
     );
   }
 
+  const conf = getConfidenceStyle(dsp.confidence_score || 0);
+
   return (
-    <div className="max-w-5xl mx-auto pb-20">
+    <div style={{ maxWidth: 900, margin: '0 auto', paddingBottom: 80 }}>
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <button
             onClick={() => navigate(createPageUrl('Dashboard'))}
-            className="text-slate-400 hover:text-slate-200"
+            style={{
+              width: 36, height: 36, borderRadius: '50%', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+              background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: t.muted,
+            }}
           >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
+            <ArrowLeft style={{ width: 18, height: 18 }} />
+          </button>
           <div>
-            <h1 className="text-2xl font-light text-slate-100">
+            <h1 style={{ fontSize: 22, fontWeight: 300, color: t.title, margin: 0 }}>
               Definitive Subject Profile
             </h1>
-            <p className="text-sm text-slate-500 mt-1">
-              {subject.name}
-            </p>
+            <p style={{ fontSize: 13, color: t.muted, marginTop: 4 }}>{subject.name}</p>
           </div>
         </div>
         
-        <Button
-          variant="outline"
-          className="border-slate-700 text-slate-300 hover:bg-slate-800"
+        <button
           onClick={() => window.print()}
+          style={{ ...glassBtnSecondary(t), padding: '9px 20px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}
         >
-          <Download className="h-4 w-4 mr-2" />
+          <Download style={{ width: 15, height: 15 }} />
           Export
-        </Button>
+        </button>
       </div>
 
       {/* Report Content */}
-      <div ref={reportRef} className="space-y-6">
+      <div ref={reportRef} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        
         {/* Header Card */}
-        <div className="glass-panel rounded-2xl p-6 border-t-2 border-amber-500/50">
-          <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <Badge variant="outline" className="border-emerald-500/30 text-emerald-400 gap-1">
-                  <Lock className="h-3 w-3" />
-                  FINALIZED
-                </Badge>
-                <Badge variant="outline" className="border-slate-700 text-slate-400 gap-1">
-                  <CheckCircle2 className="h-3 w-3" />
-                  VERIFIED
-                </Badge>
+        <div style={{
+          ...glassCard(t),
+          padding: 28,
+          borderTop: `2px solid rgba(245,158,11,0.45)`,
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: 20 }}>
+              <div>
+                {/* Badges */}
+                <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                  <span style={{
+                    fontSize: 11, fontWeight: 600, letterSpacing: '0.08em',
+                    padding: '4px 10px', borderRadius: 999,
+                    background: 'rgba(16,185,129,0.12)', color: '#10b981',
+                    border: '1px solid rgba(16,185,129,0.25)',
+                    display: 'flex', alignItems: 'center', gap: 5,
+                  }}>
+                    <Lock style={{ width: 10, height: 10 }} />
+                    FINALIZED
+                  </span>
+                  <span style={{
+                    fontSize: 11, fontWeight: 600, letterSpacing: '0.08em',
+                    padding: '4px 10px', borderRadius: 999,
+                    background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
+                    color: t.muted,
+                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.10)'}`,
+                    display: 'flex', alignItems: 'center', gap: 5,
+                  }}>
+                    <CheckCircle2 style={{ width: 10, height: 10 }} />
+                    VERIFIED
+                  </span>
+                </div>
+                
+                <h2 style={{ fontSize: 30, fontWeight: 300, color: t.title, margin: '0 0 12px' }}>
+                  {subject.name}
+                </h2>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {[
+                    ['Document ID', formatDocumentId(dsp.document_id || `DSP-${subject.id?.slice(-6) || '000'}-CP-003-APL`)],
+                    ['Protocol', dsp.protocol_version || 'CP-003-O-D-APL v2.1'],
+                    ['Date of Synthesis', dsp.date_of_synthesis || new Date().toISOString().split('T')[0]],
+                  ].map(([label, value]) => (
+                    <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.12em', color: t.label, minWidth: 130 }}>
+                        {label}:
+                      </span>
+                      <span style={{ fontSize: 13, fontFamily: 'monospace', color: t.text }}>{value}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-              
-              <h2 className="text-3xl font-light text-slate-100 mb-2">
-                {subject.name}
-              </h2>
-              
-              <div className="space-y-1 text-sm text-slate-500">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs uppercase tracking-wider text-slate-600">Document ID:</span>
-                  <span className="font-mono">{formatDocumentId(dsp.document_id || `DSP-${subject.id?.slice(-6) || '000'}-CP-003-APL`)}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs uppercase tracking-wider text-slate-600">Protocol:</span>
-                  <span className="font-mono">{dsp.protocol_version || 'CP-003-O-D-APL v2.1'}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs uppercase tracking-wider text-slate-600">Date of Synthesis:</span>
-                  <span className="font-mono">{dsp.date_of_synthesis || new Date().toISOString().split('T')[0]}</span>
-                </div>
+
+              {/* Confidence score */}
+              <div style={{
+                padding: '20px 28px', borderRadius: 16, textAlign: 'center', minWidth: 130,
+                background: conf.bg, border: `1px solid ${conf.border}`,
+              }}>
+                <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: conf.color, opacity: 0.8, marginBottom: 6 }}>
+                  Confidence
+                </p>
+                <p style={{ fontSize: 32, fontWeight: 300, color: conf.color, margin: 0 }}>
+                  {dsp.confidence_score || 0}%
+                </p>
               </div>
             </div>
-            
-            <div className={cn(
-              "px-6 py-4 rounded-xl border text-center min-w-[140px]",
-              getConfidenceColor(dsp.confidence_score || 0)
-            )}>
-              <p className="text-xs uppercase tracking-wider opacity-70 mb-1">Confidence</p>
-              <p className="text-3xl font-light">{dsp.confidence_score || 0}%</p>
-            </div>
+
+            {dsp.classification && (
+              <div style={{ paddingTop: 20, borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}` }}>
+                <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.12em', color: t.label, marginBottom: 8 }}>
+                  Classification
+                </p>
+                <p style={{ fontSize: 20, fontWeight: 400, color: t.accent, margin: 0 }}>{dsp.classification}</p>
+              </div>
+            )}
           </div>
-          
-          {dsp.classification && (
-            <div className="mt-6 pt-6 border-t border-slate-800">
-              <p className="text-xs uppercase tracking-wider text-slate-500 mb-2">Classification</p>
-              <p className="text-xl font-light text-amber-400">{dsp.classification}</p>
-            </div>
-          )}
         </div>
 
         {/* Executive Summary */}
-        <div className="glass-panel rounded-2xl p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <FileText className="h-4 w-4 text-amber-500" />
-            <h3 className="text-sm font-medium text-slate-200 uppercase tracking-wider">
-              Executive Summary
-            </h3>
-          </div>
-          <p className="text-slate-300 leading-relaxed whitespace-pre-wrap">
+        <Section t={t} isDark={isDark} icon={<FileText style={{ width: 15, height: 15, color: '#f59e0b' }} />} title="Executive Summary">
+          <p style={{ color: t.text, lineHeight: 1.75, whiteSpace: 'pre-wrap', margin: 0 }}>
             {dsp.executive_summary || 'No summary available'}
           </p>
-        </div>
+        </Section>
 
         {/* Personality Matrix */}
-        <div className="glass-panel rounded-2xl p-6">
-          <div className="flex items-center gap-2 mb-6">
-            <Brain className="h-4 w-4 text-violet-500" />
-            <h3 className="text-sm font-medium text-slate-200 uppercase tracking-wider">
-              Personality Matrix
-            </h3>
-          </div>
+        <Section t={t} isDark={isDark} icon={<Brain style={{ width: 15, height: 15, color: '#8b5cf6' }} />} title="Personality Matrix">
           <PersonalityMatrix data={dsp.personality_matrix} editable={false} />
-        </div>
+        </Section>
 
         {/* Cognitive Architecture */}
         {dsp.cognitive_architecture && (
-          <div className="glass-panel rounded-2xl p-6">
-            <div className="flex items-center gap-2 mb-6">
-              <Brain className="h-4 w-4 text-violet-500" />
-              <h3 className="text-sm font-medium text-slate-200 uppercase tracking-wider">
-                Cognitive Architecture
-              </h3>
-            </div>
-            <div className="space-y-4">
-              {dsp.cognitive_architecture.thinking_style && (
-                <div>
-                  <h4 className="text-xs uppercase tracking-wider text-slate-500 mb-2">Thinking Style</h4>
-                  <p className="text-slate-300 leading-relaxed">{dsp.cognitive_architecture.thinking_style}</p>
-                </div>
-              )}
-              {dsp.cognitive_architecture.epistemic_requirements && (
-                <div>
-                  <h4 className="text-xs uppercase tracking-wider text-slate-500 mb-2">Epistemic Requirements</h4>
-                  <p className="text-slate-300 leading-relaxed">{dsp.cognitive_architecture.epistemic_requirements}</p>
-                </div>
-              )}
-              {dsp.cognitive_architecture.defense_mechanisms && (
-                <div>
-                  <h4 className="text-xs uppercase tracking-wider text-slate-500 mb-2">Defense Mechanisms</h4>
-                  <p className="text-slate-300 leading-relaxed">{dsp.cognitive_architecture.defense_mechanisms}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Behavioral Patterns */}
-        {dsp.behavioral_patterns && dsp.behavioral_patterns.length > 0 && (
-          <div className="glass-panel rounded-2xl p-6">
-            <div className="flex items-center gap-2 mb-6">
-              <GitBranch className="h-4 w-4 text-emerald-500" />
-              <h3 className="text-sm font-medium text-slate-200 uppercase tracking-wider">
-                Behavioral Patterns
-              </h3>
-            </div>
-            <div className="space-y-4">
-              {dsp.behavioral_patterns.map((pattern, index) => (
-                <div key={index} className="p-4 bg-slate-900/50 rounded-xl border border-slate-800">
-                  <h4 className="text-sm font-medium text-amber-400 mb-2">{pattern.label}</h4>
-                  <p className="text-slate-300 mb-2 leading-relaxed">{pattern.description}</p>
-                  <p className="text-xs text-slate-500 italic">{pattern.context}</p>
+          <Section t={t} isDark={isDark} icon={<Brain style={{ width: 15, height: 15, color: '#8b5cf6' }} />} title="Cognitive Architecture">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+              {[
+                ['Thinking Style', dsp.cognitive_architecture.thinking_style],
+                ['Epistemic Requirements', dsp.cognitive_architecture.epistemic_requirements],
+                ['Defense Mechanisms', dsp.cognitive_architecture.defense_mechanisms],
+              ].filter(([, v]) => v).map(([label, value]) => (
+                <div key={label}>
+                  <h4 style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.12em', color: t.label, marginBottom: 6 }}>{label}</h4>
+                  <p style={{ color: t.text, lineHeight: 1.7, margin: 0 }}>{value}</p>
                 </div>
               ))}
             </div>
-          </div>
+          </Section>
+        )}
+
+        {/* Behavioral Patterns */}
+        {dsp.behavioral_patterns?.length > 0 && (
+          <Section t={t} isDark={isDark} icon={<GitBranch style={{ width: 15, height: 15, color: '#10b981' }} />} title="Behavioral Patterns">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {dsp.behavioral_patterns.map((pattern, index) => (
+                <div key={index} style={{
+                  padding: 16, borderRadius: 14,
+                  background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'}`,
+                }}>
+                  <h4 style={{ fontSize: 13, fontWeight: 500, color: t.accent, marginBottom: 6 }}>{pattern.label}</h4>
+                  <p style={{ color: t.text, lineHeight: 1.6, marginBottom: 6, fontSize: 14 }}>{pattern.description}</p>
+                  <p style={{ fontSize: 12, color: t.muted, fontStyle: 'italic', margin: 0 }}>{pattern.context}</p>
+                </div>
+              ))}
+            </div>
+          </Section>
         )}
 
         {/* Predictive Model */}
-        <div className="glass-panel rounded-2xl p-6">
-          <div className="flex items-center gap-2 mb-6">
-            <GitBranch className="h-4 w-4 text-emerald-500" />
-            <h3 className="text-sm font-medium text-slate-200 uppercase tracking-wider">
-              Predictive Model
-            </h3>
-          </div>
+        <Section t={t} isDark={isDark} icon={<GitBranch style={{ width: 15, height: 15, color: '#10b981' }} />} title="Predictive Model">
           <ActionResponseMatrix data={dsp.action_response_matrix || []} editable={false} />
-        </div>
+        </Section>
 
         {/* Motivations & Fears */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="glass-panel rounded-2xl p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Target className="h-4 w-4 text-emerald-500" />
-              <h3 className="text-sm font-medium text-slate-200 uppercase tracking-wider">
-                Core Motivations
-              </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
+          <Section t={t} isDark={isDark} icon={<Target style={{ width: 15, height: 15, color: '#10b981' }} />} title="Core Motivations">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {dsp.motivations?.length > 0 ? dsp.motivations.map((item, i) => (
+                <div key={i} style={{
+                  padding: '8px 14px', borderRadius: 10, fontSize: 13,
+                  background: 'rgba(16,185,129,0.10)', color: '#10b981',
+                  border: '1px solid rgba(16,185,129,0.20)',
+                }}>
+                  {item}
+                </div>
+              )) : <p style={{ fontSize: 13, color: t.muted }}>No motivations identified</p>}
             </div>
-            <div className="space-y-2">
-              {dsp.motivations?.length > 0 ? (
-                dsp.motivations.map((item, i) => (
-                  <div 
-                    key={i}
-                    className="px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-sm text-emerald-300"
-                  >
-                    {item}
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-slate-500">No motivations identified</p>
-              )}
+          </Section>
+
+          <Section t={t} isDark={isDark} icon={<Shield style={{ width: 15, height: 15, color: '#f43f5e' }} />} title="Core Fears">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {dsp.fears?.length > 0 ? dsp.fears.map((item, i) => (
+                <div key={i} style={{
+                  padding: '8px 14px', borderRadius: 10, fontSize: 13,
+                  background: 'rgba(244,63,94,0.10)', color: '#f43f5e',
+                  border: '1px solid rgba(244,63,94,0.20)',
+                }}>
+                  {item}
+                </div>
+              )) : <p style={{ fontSize: 13, color: t.muted }}>No fears identified</p>}
             </div>
-          </div>
-          
-          <div className="glass-panel rounded-2xl p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Shield className="h-4 w-4 text-rose-500" />
-              <h3 className="text-sm font-medium text-slate-200 uppercase tracking-wider">
-                Core Fears
-              </h3>
-            </div>
-            <div className="space-y-2">
-              {dsp.fears?.length > 0 ? (
-                dsp.fears.map((item, i) => (
-                  <div 
-                    key={i}
-                    className="px-3 py-2 bg-rose-500/10 border border-rose-500/20 rounded-lg text-sm text-rose-300"
-                  >
-                    {item}
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-slate-500">No fears identified</p>
-              )}
-            </div>
-          </div>
+          </Section>
         </div>
 
         {/* Conflicts */}
         {subject.conflicts_detected?.length > 0 && (
-          <div className="glass-panel rounded-2xl p-6 border border-rose-500/30">
-            <h3 className="text-sm font-medium text-rose-400 uppercase tracking-wider mb-4">
+          <div style={{
+            ...glassCard(t),
+            padding: 24,
+            border: `1px solid rgba(244,63,94,0.30)`,
+          }}>
+            <h3 style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#f43f5e', marginBottom: 16 }}>
               Analysis Conflicts
             </h3>
-            <div className="space-y-3">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {subject.conflicts_detected.map((conflict, i) => (
-                <div key={i} className="p-3 bg-rose-500/10 rounded-lg">
-                  <p className="text-sm text-rose-300">{conflict.description}</p>
-                  <p className="text-xs text-rose-400/60 mt-1">Resolution: {conflict.resolution}</p>
+                <div key={i} style={{ padding: 12, borderRadius: 10, background: 'rgba(244,63,94,0.08)' }}>
+                  <p style={{ fontSize: 13, color: isDark ? '#fda4af' : '#be123c', margin: '0 0 4px' }}>{conflict.description}</p>
+                  <p style={{ fontSize: 11, color: isDark ? 'rgba(253,164,175,0.6)' : '#9f1239', margin: 0 }}>Resolution: {conflict.resolution}</p>
                 </div>
               ))}
             </div>
@@ -311,15 +292,45 @@ export default function DSPReport() {
         )}
 
         {/* Footer */}
-        <div className="text-center py-8 border-t border-slate-800">
-          <p className="text-xs text-slate-600 uppercase tracking-wider">
+        <div style={{
+          textAlign: 'center', paddingTop: 32, marginTop: 8,
+          borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+        }}>
+          <p style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.15em', color: t.label, margin: '0 0 4px' }}>
             Apollo Profiling Engine • Definitive Subject Profile
           </p>
-          <p className="text-xs text-slate-700 mt-1">
+          <p style={{ fontSize: 11, color: t.muted, margin: 0 }}>
             Generated {format(new Date(), 'PPP')}
           </p>
         </div>
       </div>
     </div>
   );
+}
+
+function Section({ t, isDark, icon, title, children }) {
+  return (
+    <div style={{ ...sectionStyle(t, isDark), padding: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+        {icon}
+        <h3 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: t.label, margin: 0 }}>
+          {title}
+        </h3>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function sectionStyle(t, isDark) {
+  return {
+    background: isDark ? 'rgba(255,255,255,0.045)' : 'rgba(255,255,255,0.55)',
+    backdropFilter: 'blur(40px) saturate(180%)',
+    WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+    border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.70)'}`,
+    boxShadow: isDark
+      ? 'inset 0 1px 0 0 rgba(255,255,255,0.08), inset 0 -1px 0 0 rgba(0,0,0,0.30), 0 4px 20px rgba(0,0,0,0.20)'
+      : 'inset 0 1.5px 0 0 rgba(255,255,255,0.95), inset 0 -1px 0 0 rgba(0,0,0,0.03), 0 4px 20px rgba(60,60,80,0.06)',
+    borderRadius: 20,
+  };
 }
