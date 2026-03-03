@@ -177,6 +177,7 @@ export default function Processing() {
     if (!subject) return;
     
     setIsProcessing(true);
+    startProcessing(subjectId, subject.name);
     const results = {};
     const detectedConflicts = [];
 
