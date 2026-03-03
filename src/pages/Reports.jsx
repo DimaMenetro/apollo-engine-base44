@@ -3,38 +3,22 @@ import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '../utils';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { 
-  Search, 
-  Filter,
-  Clock,
-  CheckCircle2,
-  Activity,
-  FileSearch,
-  ChevronRight,
-  Users
-} from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { useTheme } from '../components/theme/ThemeProvider';
+import { light, dark, glassCard } from '../components/ui/LiquidGlass';
+import { Search, Filter, Clock, CheckCircle2, Activity, FileSearch, ChevronRight, Users } from 'lucide-react';
 import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 const statusConfig = {
-  intake: { label: 'Intake', color: 'bg-slate-500/20 text-slate-400 border-slate-500/30', icon: Clock },
-  processing: { label: 'Processing', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30', icon: Activity },
-  review: { label: 'Review', color: 'bg-violet-500/20 text-violet-400 border-violet-500/30', icon: FileSearch },
-  finalized: { label: 'Finalized', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30', icon: CheckCircle2 },
+  intake:     { label: 'Intake',     color: { bg: 'rgba(100,116,139,0.15)', text: '#94a3b8', border: 'rgba(100,116,139,0.25)' }, icon: Clock        },
+  processing: { label: 'Processing', color: { bg: 'rgba(245,158,11,0.15)',  text: '#f59e0b', border: 'rgba(245,158,11,0.25)'  }, icon: Activity     },
+  review:     { label: 'Review',     color: { bg: 'rgba(139,92,246,0.15)',  text: '#a78bfa', border: 'rgba(139,92,246,0.25)'  }, icon: FileSearch   },
+  finalized:  { label: 'Finalized',  color: { bg: 'rgba(16,185,129,0.15)', text: '#34d399', border: 'rgba(16,185,129,0.25)'  }, icon: CheckCircle2 },
 };
 
 export default function Reports() {
+  const { isDark } = useTheme();
+  const t = isDark ? dark : light;
+
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
@@ -44,113 +28,105 @@ export default function Reports() {
     retry: 1,
   });
 
-  if (error) {
-    return (
-      <div className="max-w-4xl mx-auto text-center py-20">
-        <p className="text-slate-500 mb-4">Unable to load data</p>
-        <Button 
-          variant="outline" 
-          onClick={() => window.location.reload()}
-          className="border-slate-700 text-slate-300"
-        >
-          Retry
-        </Button>
-      </div>
-    );
-  }
-
   const filteredSubjects = subjects.filter(subject => {
-    const matchesSearch = !search || 
+    const matchesSearch = !search ||
       subject.name?.toLowerCase().includes(search.toLowerCase()) ||
       subject.id?.toLowerCase().includes(search.toLowerCase());
-    
     const matchesStatus = statusFilter === 'all' || subject.status === statusFilter;
-    
     return matchesSearch && matchesStatus;
   });
 
   const getTargetPage = (subject) => {
     switch (subject.status) {
-      case 'intake': return `SubjectIntake?id=${subject.id}`;
+      case 'intake':     return `SubjectIntake?id=${subject.id}`;
       case 'processing': return `Processing?id=${subject.id}`;
-      case 'review': return `SubjectReview?id=${subject.id}`;
-      case 'finalized': return `DSPReport?id=${subject.id}`;
-      default: return `SubjectIntake?id=${subject.id}`;
+      case 'review':     return `SubjectReview?id=${subject.id}`;
+      case 'finalized':  return `DSPReport?id=${subject.id}`;
+      default:           return `SubjectIntake?id=${subject.id}`;
     }
   };
 
+  const inputStyle = {
+    padding: '9px 14px', fontSize: 13, borderRadius: 10,
+    background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+    border: `1px solid ${isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.09)'}`,
+    color: t.title, outline: 'none', fontFamily: 'inherit',
+  };
+
+  const dividerColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+
+  if (error) {
+    return (
+      <div style={{ maxWidth: 600, margin: '0 auto', textAlign: 'center', padding: '80px 20px' }}>
+        <p style={{ color: t.muted, marginBottom: 16 }}>Unable to load data</p>
+        <button onClick={() => window.location.reload()} style={{ ...inputStyle, cursor: 'pointer' }}>Retry</button>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-6xl mx-auto pb-20">
+    <div style={{ maxWidth: 1100, margin: '0 auto', paddingBottom: 80 }}>
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, marginBottom: 28 }}>
         <div>
-          <h1 className="text-2xl font-light text-slate-100">All Reports</h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 style={{ fontSize: 22, fontWeight: 300, color: t.title, margin: 0 }}>All Reports</h1>
+          <p style={{ fontSize: 13, color: t.muted, marginTop: 6 }}>
             {subjects.length} subject profile{subjects.length !== 1 ? 's' : ''} in database
           </p>
         </div>
-        
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-            <Input
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ position: 'relative' }}>
+            <Search style={{ width: 14, height: 14, color: t.muted, position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }} />
+            <input
               placeholder="Search subjects..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 w-64 bg-slate-900/50 border-slate-700 text-slate-200 placeholder:text-slate-600"
+              style={{ ...inputStyle, paddingLeft: 32, width: 220 }}
             />
           </div>
-          
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-40 bg-slate-900/50 border-slate-700 text-slate-200">
-              <Filter className="h-4 w-4 mr-2 text-slate-500" />
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent className="bg-slate-900 border-slate-700">
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="intake">Intake</SelectItem>
-              <SelectItem value="processing">Processing</SelectItem>
-              <SelectItem value="review">Review</SelectItem>
-              <SelectItem value="finalized">Finalized</SelectItem>
-            </SelectContent>
-          </Select>
+
+          <div style={{ position: 'relative' }}>
+            <Filter style={{ width: 13, height: 13, color: t.muted, position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }} />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              style={{ ...inputStyle, paddingLeft: 30, paddingRight: 10, cursor: 'pointer', appearance: 'none' }}
+            >
+              <option value="all">All Status</option>
+              <option value="intake">Intake</option>
+              <option value="processing">Processing</option>
+              <option value="review">Review</option>
+              <option value="finalized">Finalized</option>
+            </select>
+          </div>
         </div>
       </div>
 
       {/* Table */}
-      <div className="glass-panel rounded-3xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
+      <div style={{ ...glassCard(t), overflow: 'hidden', padding: 0 }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr className="border-b border-slate-800">
-                <th className="text-left px-6 py-4 text-xs uppercase tracking-wider text-slate-500 font-medium">
-                  Subject
-                </th>
-                <th className="text-left px-6 py-4 text-xs uppercase tracking-wider text-slate-500 font-medium">
-                  Status
-                </th>
-                <th className="text-left px-6 py-4 text-xs uppercase tracking-wider text-slate-500 font-medium">
-                  Confidence
-                </th>
-                <th className="text-left px-6 py-4 text-xs uppercase tracking-wider text-slate-500 font-medium">
-                  Data Streams
-                </th>
-                <th className="text-left px-6 py-4 text-xs uppercase tracking-wider text-slate-500 font-medium">
-                  Created
-                </th>
-                <th className="px-6 py-4"></th>
+              <tr style={{ borderBottom: `1px solid ${dividerColor}` }}>
+                {['Subject', 'Status', 'Confidence', 'Data Streams', 'Created', ''].map((h, i) => (
+                  <th key={i} style={{
+                    textAlign: 'left', padding: '14px 20px',
+                    fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.12em',
+                    color: t.label, fontWeight: 600, whiteSpace: 'nowrap',
+                  }}>{h}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 [...Array(5)].map((_, i) => (
-                  <tr key={i} className="border-b border-slate-800/50">
-                    <td className="px-6 py-4"><Skeleton className="h-5 w-32 bg-slate-800" /></td>
-                    <td className="px-6 py-4"><Skeleton className="h-6 w-24 bg-slate-800 rounded-full" /></td>
-                    <td className="px-6 py-4"><Skeleton className="h-5 w-12 bg-slate-800" /></td>
-                    <td className="px-6 py-4"><Skeleton className="h-5 w-28 bg-slate-800" /></td>
-                    <td className="px-6 py-4"><Skeleton className="h-5 w-24 bg-slate-800" /></td>
-                    <td className="px-6 py-4"><Skeleton className="h-5 w-5 bg-slate-800" /></td>
+                  <tr key={i} style={{ borderBottom: `1px solid ${dividerColor}` }}>
+                    {[...Array(6)].map((_, j) => (
+                      <td key={j} style={{ padding: '14px 20px' }}>
+                        <div style={{ height: 14, width: j === 0 ? 120 : 80, borderRadius: 6, background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)' }} />
+                      </td>
+                    ))}
                   </tr>
                 ))
               ) : filteredSubjects.length > 0 ? (
@@ -159,58 +135,61 @@ export default function Reports() {
                   const StatusIcon = status.icon;
                   const streamCount = ['stream_a_text', 'stream_b_audio', 'stream_c_video', 'stream_d_behavioral', 'stream_e_analog']
                     .filter(key => subject[key]?.length > 0).length;
-                  
+
+                  const conf = subject.dsp?.confidence_score;
+
                   return (
-                    <tr 
+                    <tr
                       key={subject.id}
-                      className="border-b border-slate-800/50 hover:bg-slate-900/50 transition-colors"
+                      style={{ borderBottom: `1px solid ${dividerColor}` }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.025)' : 'rgba(0,0,0,0.02)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                     >
-                      <td className="px-6 py-4">
-                        <div>
-                          <p className="font-medium text-slate-200">{subject.name}</p>
-                          <p className="text-xs text-slate-500 font-mono mt-0.5">
-                            DSP-{subject.id?.slice(-8).toUpperCase()}
-                          </p>
-                        </div>
+                      <td style={{ padding: '14px 20px' }}>
+                        <p style={{ fontWeight: 500, color: t.title, margin: '0 0 3px', fontSize: 14 }}>{subject.name}</p>
+                        <p style={{ fontSize: 11, color: t.muted, fontFamily: 'monospace', margin: 0 }}>
+                          DSP-{subject.id?.slice(-8).toUpperCase()}
+                        </p>
                       </td>
-                      <td className="px-6 py-4">
-                        <Badge variant="outline" className={cn("border", status.color)}>
-                          <StatusIcon className="h-3 w-3 mr-1" />
+                      <td style={{ padding: '14px 20px' }}>
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 5,
+                          fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 999,
+                          background: status.color.bg, color: status.color.text, border: `1px solid ${status.color.border}`,
+                        }}>
+                          <StatusIcon style={{ width: 10, height: 10 }} />
                           {status.label}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4">
-                        {subject.status === 'finalized' && subject.dsp?.confidence_score ? (
-                          <span className={cn(
-                            "font-mono",
-                            subject.dsp.confidence_score >= 80 ? 'text-emerald-400' :
-                            subject.dsp.confidence_score >= 60 ? 'text-amber-400' : 'text-rose-400'
-                          )}>
-                            {subject.dsp.confidence_score}%
-                          </span>
-                        ) : (
-                          <span className="text-slate-600">—</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-sm text-slate-400">
-                          {streamCount}/5 active
                         </span>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className="text-sm text-slate-500">
+                      <td style={{ padding: '14px 20px' }}>
+                        {subject.status === 'finalized' && conf ? (
+                          <span style={{
+                            fontFamily: 'monospace', fontSize: 14, fontWeight: 500,
+                            color: conf >= 80 ? '#10b981' : conf >= 60 ? '#f59e0b' : '#f43f5e',
+                          }}>
+                            {conf}%
+                          </span>
+                        ) : (
+                          <span style={{ color: t.muted }}>—</span>
+                        )}
+                      </td>
+                      <td style={{ padding: '14px 20px' }}>
+                        <span style={{ fontSize: 13, color: t.subtitle }}>{streamCount}/5 active</span>
+                      </td>
+                      <td style={{ padding: '14px 20px' }}>
+                        <span style={{ fontSize: 13, color: t.muted }}>
                           {format(new Date(subject.created_date), 'MMM d, yyyy')}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
-                        <Link to={createPageUrl(getTargetPage(subject))}>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-slate-500 hover:text-amber-500"
-                          >
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
+                      <td style={{ padding: '14px 20px' }}>
+                        <Link to={createPageUrl(getTargetPage(subject))} style={{ textDecoration: 'none' }}>
+                          <button style={{
+                            width: 28, height: 28, borderRadius: '50%', border: 'none',
+                            background: 'transparent', cursor: 'pointer', color: t.muted,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            <ChevronRight style={{ width: 15, height: 15 }} />
+                          </button>
                         </Link>
                       </td>
                     </tr>
@@ -218,18 +197,17 @@ export default function Reports() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center">
-                    <Users className="h-12 w-12 text-slate-700 mx-auto mb-4" />
-                    <p className="text-slate-500">No subjects found</p>
-                    {search || statusFilter !== 'all' ? (
-                      <Button
-                        variant="link"
+                  <td colSpan={6} style={{ padding: '48px 20px', textAlign: 'center' }}>
+                    <Users style={{ width: 36, height: 36, color: t.muted, margin: '0 auto 12px' }} />
+                    <p style={{ color: t.muted, margin: '0 0 10px' }}>No subjects found</p>
+                    {(search || statusFilter !== 'all') && (
+                      <button
                         onClick={() => { setSearch(''); setStatusFilter('all'); }}
-                        className="text-amber-500 mt-2"
+                        style={{ background: 'none', border: 'none', color: t.accent, cursor: 'pointer', fontSize: 13 }}
                       >
                         Clear filters
-                      </Button>
-                    ) : null}
+                      </button>
+                    )}
                   </td>
                 </tr>
               )}

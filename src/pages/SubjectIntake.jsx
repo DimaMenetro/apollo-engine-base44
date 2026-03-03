@@ -3,21 +3,17 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { 
-  ArrowLeft, 
-  ArrowRight, 
-  Save,
-  Loader2,
-  UserPlus
-} from 'lucide-react';
+import { useTheme } from '../components/theme/ThemeProvider';
+import { light, dark, glassCard, glassBtn, glassBtnSecondary } from '../components/ui/LiquidGlass';
+import { ArrowLeft, ArrowRight, Save, Loader2, UserPlus } from 'lucide-react';
 import DataStreamUploader from '../components/intake/DataStreamUploader';
 
 export default function SubjectIntake() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { isDark } = useTheme();
+  const t = isDark ? dark : light;
+
   const urlParams = new URLSearchParams(window.location.search);
   const subjectId = urlParams.get('id');
 
@@ -70,134 +66,121 @@ export default function SubjectIntake() {
 
   const handleSubmit = () => {
     const dataWithStatus = { ...formData, status: 'processing' };
-    if (subjectId) {
-      updateMutation.mutate(dataWithStatus);
-    } else {
-      createMutation.mutate(dataWithStatus);
-    }
+    if (subjectId) updateMutation.mutate(dataWithStatus);
+    else createMutation.mutate(dataWithStatus);
   };
 
   const handleSaveDraft = () => {
     const dataWithStatus = { ...formData, status: 'intake' };
-    if (subjectId) {
-      updateMutation.mutate(dataWithStatus);
-    } else {
-      createMutation.mutate(dataWithStatus);
-    }
+    if (subjectId) updateMutation.mutate(dataWithStatus);
+    else createMutation.mutate(dataWithStatus);
   };
 
   const updateStream = (streamKey, files) => {
     setFormData(prev => ({ ...prev, [streamKey]: files }));
   };
 
-  const hasData = Object.keys(formData)
-    .filter(k => k.startsWith('stream_'))
-    .some(k => formData[k].length > 0);
-
+  const hasData = Object.keys(formData).filter(k => k.startsWith('stream_')).some(k => formData[k].length > 0);
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
   if (loadingSubject) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 text-amber-500 animate-spin" />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <Loader2 style={{ width: 32, height: 32, color: '#f59e0b', animation: 'spin 1s linear infinite' }} />
       </div>
     );
   }
 
+  const inputStyle = {
+    width: '100%', padding: '10px 14px', fontSize: 15, borderRadius: 10,
+    background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+    border: `1px solid ${isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.10)'}`,
+    color: t.title, outline: 'none', boxSizing: 'border-box',
+    fontFamily: 'inherit',
+  };
+
   return (
-    <div className="max-w-4xl mx-auto pb-20">
+    <div style={{ maxWidth: 800, margin: '0 auto', paddingBottom: 80 }}>
       {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
-        <Button
-          variant="ghost"
-          size="icon"
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 32 }}>
+        <button
           onClick={() => navigate(createPageUrl('Dashboard'))}
-          className="text-slate-400 hover:text-slate-200"
+          style={{
+            width: 36, height: 36, borderRadius: '50%', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+            background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.muted,
+          }}
         >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
+          <ArrowLeft style={{ width: 18, height: 18 }} />
+        </button>
         <div>
-          <h1 className="text-2xl font-light text-slate-100">
+          <h1 style={{ fontSize: 22, fontWeight: 300, color: t.title, margin: 0 }}>
             {subjectId ? 'Edit Subject' : 'New Subject Intake'}
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Upload multimodal data for analysis
-          </p>
+          <p style={{ fontSize: 13, color: t.muted, marginTop: 6 }}>Upload multimodal data for analysis</p>
         </div>
       </div>
 
-      {/* Form */}
-      <div className="space-y-8">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         {/* Subject Name */}
-        <div className="glass-panel rounded-2xl p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 rounded-lg bg-amber-500/10">
-              <UserPlus className="h-5 w-5 text-amber-500" />
+        <div style={{ ...glassCard(t), padding: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+            <div style={{ padding: 8, borderRadius: 10, background: 'rgba(245,158,11,0.12)' }}>
+              <UserPlus style={{ width: 18, height: 18, color: '#f59e0b' }} />
             </div>
             <div>
-              <h2 className="font-medium text-slate-200">Subject Identifier</h2>
-              <p className="text-sm text-slate-500">Provide a name or codename for this subject</p>
+              <h2 style={{ fontSize: 15, fontWeight: 500, color: t.title, margin: 0 }}>Subject Identifier</h2>
+              <p style={{ fontSize: 12, color: t.muted, margin: '3px 0 0' }}>Provide a name or codename for this subject</p>
             </div>
           </div>
-          <Input
+          <input
             placeholder="Enter subject name or identifier..."
             value={formData.name}
             onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-            className="bg-slate-900/50 border-slate-700 text-slate-200 placeholder:text-slate-600"
+            style={inputStyle}
           />
         </div>
 
         {/* Data Streams */}
-        <div className="glass-panel rounded-2xl p-6">
-          <h2 className="font-medium text-slate-200 mb-6">Data Streams</h2>
-          <div className="space-y-4">
-            <DataStreamUploader
-              streamKey="stream_a_text"
-              files={formData.stream_a_text}
-              onFilesChange={(files) => updateStream('stream_a_text', files)}
-            />
-            <DataStreamUploader
-              streamKey="stream_b_audio"
-              files={formData.stream_b_audio}
-              onFilesChange={(files) => updateStream('stream_b_audio', files)}
-            />
-            <DataStreamUploader
-              streamKey="stream_c_video"
-              files={formData.stream_c_video}
-              onFilesChange={(files) => updateStream('stream_c_video', files)}
-            />
-            <DataStreamUploader
-              streamKey="stream_d_behavioral"
-              files={formData.stream_d_behavioral}
-              onFilesChange={(files) => updateStream('stream_d_behavioral', files)}
-            />
-            <DataStreamUploader
-              streamKey="stream_e_analog"
-              files={formData.stream_e_analog}
-              onFilesChange={(files) => updateStream('stream_e_analog', files)}
-            />
+        <div style={{ ...glassCard(t), padding: 24 }}>
+          <h2 style={{ fontSize: 15, fontWeight: 500, color: t.title, margin: '0 0 20px' }}>Data Streams</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {['stream_a_text', 'stream_b_audio', 'stream_c_video', 'stream_d_behavioral', 'stream_e_analog'].map(streamKey => (
+              <DataStreamUploader
+                key={streamKey}
+                streamKey={streamKey}
+                files={formData[streamKey]}
+                onFilesChange={(files) => updateStream(streamKey, files)}
+              />
+            ))}
           </div>
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-between">
-          <Button
-            variant="outline"
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <button
             onClick={handleSaveDraft}
             disabled={!formData.name || isSaving}
-            className="border-slate-700 text-slate-300 hover:bg-slate-800"
+            style={{
+              ...glassBtnSecondary(t), padding: '10px 22px', fontSize: 14,
+              display: 'flex', alignItems: 'center', gap: 8,
+              opacity: (!formData.name || isSaving) ? 0.5 : 1,
+            }}
           >
-            {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+            {isSaving ? <Loader2 style={{ width: 15, height: 15, animation: 'spin 1s linear infinite' }} /> : <Save style={{ width: 15, height: 15 }} />}
             Save Draft
-          </Button>
+          </button>
           
-          <Button
+          <button
             onClick={handleSubmit}
             disabled={!formData.name || !hasData || isSaving}
-            className="bg-amber-500 hover:bg-amber-600 text-slate-950 gap-2"
+            style={{
+              ...glassBtn(t), padding: '10px 22px', fontSize: 14,
+              display: 'flex', alignItems: 'center', gap: 8,
+              opacity: (!formData.name || !hasData || isSaving) ? 0.5 : 1,
+            }}
           >
-            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Begin Processing <ArrowRight className="h-4 w-4" /></>}
-          </Button>
+            {isSaving ? <Loader2 style={{ width: 15, height: 15, animation: 'spin 1s linear infinite' }} /> : <>Begin Processing <ArrowRight style={{ width: 15, height: 15 }} /></>}
+          </button>
         </div>
       </div>
     </div>
