@@ -200,6 +200,7 @@ export default function Processing() {
       try {
         // Simulate processing delay
         await new Promise(resolve => setTimeout(resolve, 1500));
+        updateProgress(module.title, Math.round(((i + 0.5) / analysisModules.length) * 100));
 
         // Get file URLs and preprocess if needed
         const fileUrls = module.requiredStreams 
