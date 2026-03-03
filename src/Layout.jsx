@@ -52,7 +52,7 @@ function LayoutInner({ children, currentPageName }) {
           alignItems:           'center',
           justifyContent:       'space-between',
           padding:              '10px 20px',
-          background:           isDark ? 'rgba(10,12,18,0.60)' : 'rgba(255,255,255,0.35)',
+          background:           isDark ? 'rgba(10,12,18,0.60)' : 'rgba(255,255,255,0.55)',
           backdropFilter:       'blur(40px) saturate(180%)',
           WebkitBackdropFilter: 'blur(40px) saturate(180%)',
           borderBottom:         `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.60)'}`,
