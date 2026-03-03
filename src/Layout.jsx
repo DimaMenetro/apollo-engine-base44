@@ -1,132 +1,147 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { createPageUrl } from './utils';
-import { 
-  LayoutDashboard, 
-  UserPlus, 
-  Activity, 
-  FileText,
-  Radar,
-  ChevronRight
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { ThemeProvider, useTheme } from './components/theme/ThemeProvider';
+import { AccessoryProvider } from './components/ui/AccessoryContext';
+import AmbientOrbs from './components/ui/AmbientOrbs';
+import GlassTabBar from './components/ui/GlassTabBar';
+import ThemeToggle from './components/theme/ThemeToggle';
+import { light, dark } from './components/ui/LiquidGlass';
+import { Radar } from 'lucide-react';
+
+// ─── ROOT LAYOUT ──────────────────────────────────────────────────────────────
+// Follows DS-001-G-D-LGT v2.1 architecture:
+//   ThemeProvider → AccessoryProvider → AmbientOrbs → TopBar → Content → GlassTabBar
 
 export default function Layout({ children, currentPageName }) {
-  const location = useLocation();
-  
-  const navigation = [
-    { name: 'Dashboard', page: 'Dashboard', icon: LayoutDashboard },
-    { name: 'New Subject', page: 'SubjectIntake', icon: UserPlus },
-    { name: 'Processing', page: 'Processing', icon: Activity },
-    { name: 'Reports', page: 'Reports', icon: FileText },
-  ];
+  return (
+    <ThemeProvider>
+      <AccessoryProvider>
+        <LayoutInner currentPageName={currentPageName}>
+          {children}
+        </LayoutInner>
+      </AccessoryProvider>
+    </ThemeProvider>
+  );
+}
+
+function LayoutInner({ children, currentPageName }) {
+  const { isDark } = useTheme();
+  const t = isDark ? dark : light;
 
   return (
-    <div className="min-h-screen text-slate-100 relative">
-      <style>{`
-        :root {
-          --background: 222.2 84% 4.9%;
-          --foreground: 210 40% 98%;
-          --card: 222.2 84% 4.9%;
-          --card-foreground: 210 40% 98%;
-          --popover: 222.2 84% 4.9%;
-          --popover-foreground: 210 40% 98%;
-          --primary: 43 96% 56%;
-          --primary-foreground: 222.2 84% 4.9%;
-          --secondary: 217.2 32.6% 17.5%;
-          --secondary-foreground: 210 40% 98%;
-          --muted: 217.2 32.6% 17.5%;
-          --muted-foreground: 215 20.2% 65.1%;
-          --accent: 217.2 32.6% 17.5%;
-          --accent-foreground: 210 40% 98%;
-          --destructive: 0 62.8% 30.6%;
-          --destructive-foreground: 210 40% 98%;
-          --border: 217.2 32.6% 17.5%;
-          --input: 217.2 32.6% 17.5%;
-          --ring: 43 96% 56%;
-        }
-        
-        @keyframes pulse-glow {
-          0%, 100% { opacity: 0.4; }
-          50% { opacity: 0.8; }
-        }
-        
-        .glow-amber {
-          box-shadow: 0 0 30px rgba(245, 158, 11, 0.15);
-        }
-        
-        .glass-panel {
-          background: rgba(15, 23, 42, 0.3);
-          backdrop-filter: blur(24px);
-          border: 1px solid rgba(100, 116, 139, 0.2);
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        }
-        
-        .glass-panel-thick {
-          background: rgba(15, 23, 42, 0.5);
-          backdrop-filter: blur(20px);
-          border: 1px solid rgba(100, 116, 139, 0.3);
-        }
-      `}</style>
-      
-      {/* Top Navigation Bar - Liquid Glass */}
-      <header className="fixed top-0 left-0 right-0 z-50 backdrop-blur-3xl bg-slate-950/40 border-b border-slate-700/30 shadow-2xl shadow-amber-500/5">
-        <div className="flex items-center justify-between px-6 h-16">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Radar className="h-8 w-8 text-amber-500" />
-              <div className="absolute inset-0 animate-ping">
-                <Radar className="h-8 w-8 text-amber-500 opacity-20" />
-              </div>
+    <div
+      style={{
+        minHeight:   '100svh',
+        width:       '100%',
+        background:  t.page,
+        position:    'relative',
+        transition:  'background 0.5s ease',
+        fontFamily:  "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif",
+        color:       t.text,
+      }}
+    >
+      {/* ── Ambient orbs — fixed z-0, behind all glass ─────────────────────── */}
+      <AmbientOrbs t={t} />
+
+      {/* ── Top Accessory Bar — sticky, minimal: brand + theme toggle ──────── */}
+      <header
+        style={{
+          position:             'sticky',
+          top:                  0,
+          zIndex:               50,
+          display:              'flex',
+          alignItems:           'center',
+          justifyContent:       'space-between',
+          padding:              '10px 20px',
+          background:           isDark ? 'rgba(10,12,18,0.60)' : 'rgba(255,255,255,0.35)',
+          backdropFilter:       'blur(40px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+          borderBottom:         `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.60)'}`,
+          boxShadow:            isDark
+            ? 'inset 0 -1px 0 0 rgba(255,255,255,0.04)'
+            : 'inset 0 -1px 0 0 rgba(0,0,0,0.02), 0 1px 8px rgba(0,0,0,0.03)',
+        }}
+      >
+        {/* Brand */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ position: 'relative' }}>
+            <Radar style={{ width: 26, height: 26, color: t.accent }} />
+          </div>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: t.title, letterSpacing: '-0.01em' }}>
+              APOLLO
             </div>
-            <div>
-              <h1 className="text-lg font-semibold tracking-tight text-slate-100">APOLLO</h1>
-              <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Profiling Engine v1.0</p>
+            <div style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.2em', color: t.muted }}>
+              Profiling Engine v1.0
             </div>
           </div>
-          
-          <nav className="flex items-center gap-1">
-            {navigation.map((item) => {
-              const isActive = currentPageName === item.page;
-              return (
-                <Link
-                  key={item.name}
-                  to={createPageUrl(item.page)}
-                  className={cn(
-                    "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 backdrop-blur-xl",
-                    isActive 
-                      ? "bg-amber-500/20 text-amber-400 shadow-lg shadow-amber-500/20 border border-amber-500/30" 
-                      : "text-slate-300 hover:text-slate-100 hover:bg-white/10 border border-transparent hover:border-white/20"
-                  )}
-                >
-                  <item.icon className="h-4 w-4" />
-                  {item.name}
-                </Link>
-              );
-            })}
-          </nav>
         </div>
+
+        {/* Theme toggle */}
+        <ThemeToggle />
       </header>
-      
-      {/* Main Content */}
-      <main className="pt-16 min-h-screen">
+
+      {/* ── Page content ────────────────────────────────────────────────────── */}
+      {/* paddingBottom: 120 ensures content clears the floating tab bar */}
+      <div style={{ position: 'relative', zIndex: 1, paddingBottom: 120 }}>
         <div className="p-6 md:p-8">
           {children}
         </div>
-      </main>
-      
-      {/* Gradient Background - Liquid Glass Style */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
-        {/* Main gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-amber-900/60 via-slate-950 to-violet-900/60" />
-        
-        {/* Animated gradient orbs */}
-        <div className="absolute top-0 left-0 w-full h-full">
-          <div className="absolute top-[-10%] left-[-5%] w-[50%] h-[50%] bg-gradient-to-br from-amber-500/60 via-amber-600/40 to-transparent rounded-full blur-[120px] animate-pulse" style={{ animationDuration: '8s' }} />
-          <div className="absolute bottom-[-10%] right-[-5%] w-[60%] h-[60%] bg-gradient-to-tl from-violet-500/50 via-purple-600/35 to-transparent rounded-full blur-[120px] animate-pulse" style={{ animationDuration: '12s' }} />
-          <div className="absolute top-[30%] right-[10%] w-[40%] h-[40%] bg-gradient-to-bl from-cyan-500/45 via-blue-600/30 to-transparent rounded-full blur-[100px] animate-pulse" style={{ animationDuration: '10s' }} />
-        </div>
       </div>
+
+      {/* ── Floating glass tab bar (includes BottomAccessory slot) ─────────── */}
+      <GlassTabBar currentPageName={currentPageName} />
+
+      {/* ── Global glass utility styles ────────────────────────────────────── */}
+      {/* These CSS classes allow un-migrated pages/components to keep working */}
+      {/* As pages migrate to glassCard(t) inline styles these classes phase out */}
+      <style>{`
+        /* glass-panel = glassCard(dark) values */
+        .glass-panel {
+          background:             rgba(255,255,255,0.055);
+          backdrop-filter:        blur(40px) saturate(180%);
+          -webkit-backdrop-filter:blur(40px) saturate(180%);
+          border:                 1px solid rgba(255,255,255,0.08);
+          box-shadow:
+            inset 0  1px 0 0 rgba(255,255,255,0.09),
+            inset 0 -1px 0 0 rgba(0,0,0,0.35),
+            0 8px 32px rgba(0,0,0,0.30),
+            0 1px 3px rgba(0,0,0,0.20);
+        }
+
+        /* glass-panel-thick = glassSurface(dark) values */
+        .glass-panel-thick {
+          background:             rgba(255,255,255,0.045);
+          backdrop-filter:        blur(24px) saturate(160%);
+          -webkit-backdrop-filter:blur(24px) saturate(160%);
+          border:                 1px solid rgba(255,255,255,0.07);
+          box-shadow:
+            inset 0  1px 0 0 rgba(255,255,255,0.07),
+            inset 0 -1px 0 0 rgba(0,0,0,0.25);
+        }
+
+        /* glass-material utility (backdrop only) */
+        .glass-material {
+          backdrop-filter:        blur(40px) saturate(180%);
+          -webkit-backdrop-filter:blur(40px) saturate(180%);
+        }
+
+        /* glow-amber = glassCard(dark) + amber outer glow */
+        .glow-amber {
+          box-shadow:
+            inset 0  1px 0 0 rgba(255,255,255,0.09),
+            inset 0 -1px 0 0 rgba(0,0,0,0.35),
+            0 0 30px rgba(245,158,11,0.20);
+        }
+
+        /* Scrollbar utilities */
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        @keyframes pulse-glow {
+          0%, 100% { opacity: 0.4; }
+          50%       { opacity: 0.8; }
+        }
+      `}</style>
     </div>
   );
 }
