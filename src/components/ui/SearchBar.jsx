@@ -49,6 +49,19 @@ export default function SearchBar({ t, isDark, isExpanded, onExpand, onCollapse 
     return () => clearTimeout(timer);
   }, [query]);
 
+  const handleSearchSubmit = () => {
+    if (!query.trim()) return;
+    // If there's exactly one result, navigate directly to it
+    if (results.length === 1) {
+      navigate(getSubjectPage(results[0]));
+      onCollapse();
+      return;
+    }
+    // If there are multiple results, navigate to Reports with the query pre-filled
+    navigate(createPageUrl(`Reports?search=${encodeURIComponent(query.trim())}`));
+    onCollapse();
+  };
+
   const getSubjectPage = (s) => {
     if (s.status === 'finalized') return createPageUrl(`DSPReport?id=${s.id}`);
     if (s.status === 'review')    return createPageUrl(`SubjectReview?id=${s.id}`);
