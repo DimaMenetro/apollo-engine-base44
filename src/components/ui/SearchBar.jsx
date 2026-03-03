@@ -116,6 +116,7 @@ export default function SearchBar({ t, isDark, isExpanded, onExpand, onCollapse 
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleSearchSubmit(); }}
             placeholder="Search subjects, reports…"
             style={{
               flex: 1, background: 'none', border: 'none', outline: 'none',
@@ -125,7 +126,12 @@ export default function SearchBar({ t, isDark, isExpanded, onExpand, onCollapse 
           {loading ? (
             <div style={{ width: 15, height: 15, borderRadius: '50%', border: `2px solid ${t.accent}`, borderTopColor: 'transparent', animation: 'spin 0.7s linear infinite', flexShrink: 0 }} />
           ) : (
-            <Search style={{ width: 17, height: 17, color: t.muted, flexShrink: 0 }} />
+            <button
+              onClick={handleSearchSubmit}
+              style={{ background: 'none', border: 'none', cursor: query.trim() ? 'pointer' : 'default', padding: 0, display: 'flex', alignItems: 'center' }}
+            >
+              <Search style={{ width: 17, height: 17, color: query.trim() ? t.accent : t.muted, flexShrink: 0, transition: 'color 0.2s' }} />
+            </button>
           )}
         </motion.div>
       )}
