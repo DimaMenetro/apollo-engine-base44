@@ -1,38 +1,24 @@
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Plus, Trash2, TrendingUp, AlertCircle, Clock } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { useTheme } from '../theme/ThemeProvider';
+import { light, dark, glassBtnSecondary } from '../ui/LiquidGlass';
 
 export default function ActionResponseMatrix({ data = [], onChange, editable = false }) {
+  const { isDark } = useTheme();
+  const t = isDark ? dark : light;
+
   const [newPrediction, setNewPrediction] = useState({
-    trigger: '',
-    context: '',
-    predicted_behavior: '',
-    probability: 75,
-    confidence_interval: { lower: 60, upper: 85 },
-    temporal_factors: '',
-    alternative_responses: []
+    trigger: '', context: '', predicted_behavior: '',
+    probability: 75, confidence_interval: { lower: 60, upper: 85 }, temporal_factors: '',
   });
 
   const addPrediction = () => {
     if (!newPrediction.trigger.trim() || !newPrediction.predicted_behavior.trim()) return;
     onChange([...data, { ...newPrediction }]);
-    setNewPrediction({
-      trigger: '',
-      context: '',
-      predicted_behavior: '',
-      probability: 75,
-      confidence_interval: { lower: 60, upper: 85 },
-      temporal_factors: '',
-      alternative_responses: []
-    });
+    setNewPrediction({ trigger: '', context: '', predicted_behavior: '', probability: 75, confidence_interval: { lower: 60, upper: 85 }, temporal_factors: '' });
   };
 
-  const removePrediction = (index) => {
-    onChange(data.filter((_, i) => i !== index));
-  };
+  const removePrediction = (index) => onChange(data.filter((_, i) => i !== index));
 
   const updatePrediction = (index, field, value) => {
     const updated = data.map((item, i) => {
@@ -46,16 +32,26 @@ export default function ActionResponseMatrix({ data = [], onChange, editable = f
     onChange(updated);
   };
 
-  const getProbabilityColor = (prob) => {
-    if (prob >= 80) return 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30';
-    if (prob >= 60) return 'text-amber-500 bg-amber-500/10 border-amber-500/30';
-    return 'text-rose-500 bg-rose-500/10 border-rose-500/30';
+  const getProbabilityStyle = (prob) => {
+    if (prob >= 80) return { color: '#10b981', bg: 'rgba(16,185,129,0.10)', border: 'rgba(16,185,129,0.25)' };
+    if (prob >= 60) return { color: '#f59e0b', bg: 'rgba(245,158,11,0.10)', border: 'rgba(245,158,11,0.25)' };
+    return { color: '#f43f5e', bg: 'rgba(244,63,94,0.10)', border: 'rgba(244,63,94,0.25)' };
   };
 
+  const cardBg    = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)';
+  const cardBorder = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+  const inputStyle = {
+    width: '100%', padding: '8px 12px', fontSize: 13, borderRadius: 8,
+    background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+    border: `1px solid ${isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.10)'}`,
+    color: t.title, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box',
+  };
+  const textareaStyle = { ...inputStyle, resize: 'vertical', minHeight: 60, lineHeight: 1.6 };
+  const sectionLabel = (color) => ({ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600, color, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 });
+
   return (
-    <div className="space-y-4">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {data.map((item, index) => {
-        // Support legacy format
         const isLegacy = item.scenario && item.response;
         const trigger = isLegacy ? item.scenario : item.trigger;
         const behavior = isLegacy ? item.response : item.predicted_behavior;
@@ -63,145 +59,103 @@ export default function ActionResponseMatrix({ data = [], onChange, editable = f
         const context = item.context || '';
         const temporal = item.temporal_factors || '';
         const confInterval = item.confidence_interval || { lower: probability - 15, upper: probability + 10 };
+        const probStyle = getProbabilityStyle(probability);
 
         return (
-          <div 
-            key={index}
-            className="p-5 bg-slate-900/50 rounded-xl border border-slate-800 space-y-4"
-          >
-            {/* Header with Probability */}
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1 space-y-3">
+          <div key={index} style={{ padding: 20, borderRadius: 16, background: cardBg, border: `1px solid ${cardBorder}` }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+              {/* Left: content */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {/* Trigger */}
                 <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xs uppercase text-amber-500 font-medium tracking-wider">TRIGGER EVENT</span>
-                  </div>
+                  <div style={sectionLabel('#f59e0b')}>TRIGGER EVENT</div>
                   {editable ? (
-                    <Input
-                      value={trigger}
-                      onChange={(e) => updatePrediction(index, isLegacy ? 'scenario' : 'trigger', e.target.value)}
-                      placeholder="e.g., Confronted with unexpected criticism"
-                      className="bg-slate-800/50 border-slate-700 text-slate-200"
-                    />
+                    <input value={trigger} onChange={(e) => updatePrediction(index, isLegacy ? 'scenario' : 'trigger', e.target.value)}
+                      placeholder="e.g., Confronted with unexpected criticism" style={inputStyle} />
                   ) : (
-                    <p className="text-slate-300">{trigger}</p>
+                    <p style={{ color: t.text, margin: 0, fontSize: 14 }}>{trigger}</p>
                   )}
                 </div>
 
                 {/* Context */}
                 {(context || editable) && (
                   <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <AlertCircle className="h-3.5 w-3.5 text-slate-600" />
-                      <span className="text-xs uppercase text-slate-600 font-medium tracking-wider">CONTEXTUAL FACTORS</span>
+                    <div style={sectionLabel(t.label)}>
+                      <AlertCircle style={{ width: 11, height: 11 }} />
+                      CONTEXTUAL FACTORS
                     </div>
                     {editable ? (
-                      <Textarea
-                        value={context}
-                        onChange={(e) => updatePrediction(index, 'context', e.target.value)}
-                        placeholder="e.g., In public setting with authority figures present"
-                        className="min-h-[60px] bg-slate-800/50 border-slate-700 text-slate-300 text-sm"
-                      />
+                      <textarea value={context} onChange={(e) => updatePrediction(index, 'context', e.target.value)}
+                        placeholder="Environmental, social, or situational factors..." style={textareaStyle} />
                     ) : context ? (
-                      <p className="text-sm text-slate-400">{context}</p>
+                      <p style={{ color: t.muted, margin: 0, fontSize: 13 }}>{context}</p>
                     ) : null}
                   </div>
                 )}
 
                 {/* Predicted Behavior */}
                 <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
-                    <span className="text-xs uppercase text-emerald-500 font-medium tracking-wider">PREDICTED BEHAVIOR</span>
+                  <div style={sectionLabel('#10b981')}>
+                    <TrendingUp style={{ width: 11, height: 11 }} />
+                    PREDICTED BEHAVIOR
                   </div>
                   {editable ? (
-                    <Textarea
-                      value={behavior}
-                      onChange={(e) => updatePrediction(index, isLegacy ? 'response' : 'predicted_behavior', e.target.value)}
-                      placeholder="e.g., Will deflect responsibility and shift blame to external factors while maintaining composed demeanor"
-                      className="min-h-[60px] bg-slate-800/50 border-slate-700 text-slate-200"
-                    />
+                    <textarea value={behavior} onChange={(e) => updatePrediction(index, isLegacy ? 'response' : 'predicted_behavior', e.target.value)}
+                      placeholder="Describe the expected behavioral response..." style={textareaStyle} />
                   ) : (
-                    <p className="text-slate-300">{behavior}</p>
+                    <p style={{ color: t.text, margin: 0, fontSize: 14, lineHeight: 1.65 }}>{behavior}</p>
                   )}
                 </div>
 
-                {/* Temporal Factors */}
+                {/* Temporal */}
                 {(temporal || editable) && (
                   <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Clock className="h-3.5 w-3.5 text-violet-500" />
-                      <span className="text-xs uppercase text-violet-500 font-medium tracking-wider">TEMPORAL FACTORS</span>
+                    <div style={sectionLabel('#8b5cf6')}>
+                      <Clock style={{ width: 11, height: 11 }} />
+                      TEMPORAL FACTORS
                     </div>
                     {editable ? (
-                      <Input
-                        value={temporal}
-                        onChange={(e) => updatePrediction(index, 'temporal_factors', e.target.value)}
-                        placeholder="e.g., Response typically emerges within 2-5 seconds, sustained for 10+ minutes"
-                        className="bg-slate-800/50 border-slate-700 text-slate-300 text-sm"
-                      />
+                      <input value={temporal} onChange={(e) => updatePrediction(index, 'temporal_factors', e.target.value)}
+                        placeholder="Timing, duration, and temporal patterns" style={inputStyle} />
                     ) : temporal ? (
-                      <p className="text-sm text-slate-400">{temporal}</p>
+                      <p style={{ color: t.muted, margin: 0, fontSize: 13 }}>{temporal}</p>
                     ) : null}
                   </div>
                 )}
               </div>
 
-              {/* Probability Card */}
-              <div className="flex flex-col items-end gap-3">
-                <div className={cn(
-                  "px-4 py-3 rounded-xl border text-center min-w-[120px]",
-                  getProbabilityColor(probability)
-                )}>
-                  <p className="text-xs uppercase tracking-wider opacity-70 mb-1">Probability</p>
-                  <p className="text-2xl font-light">{probability}%</p>
+              {/* Right: probability + CI */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10, flexShrink: 0 }}>
+                <div style={{ padding: '14px 20px', borderRadius: 14, textAlign: 'center', minWidth: 110, background: probStyle.bg, border: `1px solid ${probStyle.border}` }}>
+                  <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: probStyle.color, opacity: 0.8, margin: '0 0 4px' }}>Probability</p>
+                  <p style={{ fontSize: 26, fontWeight: 300, color: probStyle.color, margin: 0 }}>{probability}%</p>
                   {editable && (
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={probability}
+                    <input type="range" min="0" max="100" value={probability}
                       onChange={(e) => updatePrediction(index, 'probability', parseInt(e.target.value))}
-                      className="w-full h-1 mt-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
-                    />
+                      style={{ width: '100%', marginTop: 8, accentColor: probStyle.color }} />
                   )}
                 </div>
 
-                {/* Confidence Interval */}
-                <div className="text-center text-xs text-slate-500">
-                  <span className="font-mono">CI: [{confInterval.lower}%, {confInterval.upper}%]</span>
+                <div style={{ textAlign: 'center' }}>
+                  <span style={{ fontSize: 11, fontFamily: 'monospace', color: t.muted }}>
+                    CI: [{confInterval.lower}%, {confInterval.upper}%]
+                  </span>
                   {editable && (
-                    <div className="flex gap-1 mt-1">
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={confInterval.lower}
+                    <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+                      <input type="number" min="0" max="100" value={confInterval.lower}
                         onChange={(e) => updatePrediction(index, 'confidence_interval.lower', parseInt(e.target.value))}
-                        className="w-12 h-6 px-1 text-xs bg-slate-800 border border-slate-700 rounded text-slate-300"
-                      />
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={confInterval.upper}
+                        style={{ width: 48, padding: '2px 6px', fontSize: 11, borderRadius: 6, background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', border: `1px solid ${cardBorder}`, color: t.title, outline: 'none' }} />
+                      <input type="number" min="0" max="100" value={confInterval.upper}
                         onChange={(e) => updatePrediction(index, 'confidence_interval.upper', parseInt(e.target.value))}
-                        className="w-12 h-6 px-1 text-xs bg-slate-800 border border-slate-700 rounded text-slate-300"
-                      />
+                        style={{ width: 48, padding: '2px 6px', fontSize: 11, borderRadius: 6, background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', border: `1px solid ${cardBorder}`, color: t.title, outline: 'none' }} />
                     </div>
                   )}
                 </div>
 
                 {editable && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removePrediction(index)}
-                    className="h-8 w-8 text-slate-500 hover:text-rose-500"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <button onClick={() => removePrediction(index)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.muted, padding: 4 }}>
+                    <Trash2 style={{ width: 14, height: 14 }} />
+                  </button>
                 )}
               </div>
             </div>
@@ -209,123 +163,66 @@ export default function ActionResponseMatrix({ data = [], onChange, editable = f
         );
       })}
 
+      {/* Add new prediction form */}
       {editable && (
-        <div className="p-5 border-2 border-dashed border-slate-800 rounded-xl space-y-4">
-          <h4 className="text-sm font-medium text-slate-400">Add New Prediction</h4>
-          
+        <div style={{ padding: 20, borderRadius: 16, border: `2px dashed ${cardBorder}`, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <h4 style={{ fontSize: 12, fontWeight: 600, color: t.label, margin: 0 }}>Add New Prediction</h4>
+
           <div>
-            <label className="text-xs uppercase tracking-wider text-amber-500 mb-2 block">
-              Trigger Event *
-            </label>
-            <Input
-              value={newPrediction.trigger}
-              onChange={(e) => setNewPrediction({ ...newPrediction, trigger: e.target.value })}
-              placeholder="What event triggers this behavior?"
-              className="bg-slate-900/50 border-slate-700 text-slate-200"
-            />
+            <label style={{ ...sectionLabel('#f59e0b'), marginBottom: 6 }}>Trigger Event *</label>
+            <input value={newPrediction.trigger} onChange={(e) => setNewPrediction({ ...newPrediction, trigger: e.target.value })}
+              placeholder="What event triggers this behavior?" style={inputStyle} />
           </div>
 
           <div>
-            <label className="text-xs uppercase tracking-wider text-slate-600 mb-2 block">
-              Contextual Factors
-            </label>
-            <Textarea
-              value={newPrediction.context}
-              onChange={(e) => setNewPrediction({ ...newPrediction, context: e.target.value })}
-              placeholder="Environmental, social, or situational factors that influence the response"
-              className="min-h-[60px] bg-slate-900/50 border-slate-700 text-slate-300 text-sm"
-            />
+            <label style={{ ...sectionLabel(t.label), marginBottom: 6 }}>Contextual Factors</label>
+            <textarea value={newPrediction.context} onChange={(e) => setNewPrediction({ ...newPrediction, context: e.target.value })}
+              placeholder="Environmental, social, or situational factors..." style={textareaStyle} />
           </div>
 
           <div>
-            <label className="text-xs uppercase tracking-wider text-emerald-500 mb-2 block">
-              Predicted Behavior *
-            </label>
-            <Textarea
-              value={newPrediction.predicted_behavior}
-              onChange={(e) => setNewPrediction({ ...newPrediction, predicted_behavior: e.target.value })}
-              placeholder="Describe the expected behavioral response in detail"
-              className="min-h-[80px] bg-slate-900/50 border-slate-700 text-slate-200"
-            />
+            <label style={{ ...sectionLabel('#10b981'), marginBottom: 6 }}>Predicted Behavior *</label>
+            <textarea value={newPrediction.predicted_behavior} onChange={(e) => setNewPrediction({ ...newPrediction, predicted_behavior: e.target.value })}
+              placeholder="Describe the expected behavioral response in detail" style={{ ...textareaStyle, minHeight: 80 }} />
           </div>
 
           <div>
-            <label className="text-xs uppercase tracking-wider text-violet-500 mb-2 block">
-              Temporal Factors
-            </label>
-            <Input
-              value={newPrediction.temporal_factors}
-              onChange={(e) => setNewPrediction({ ...newPrediction, temporal_factors: e.target.value })}
-              placeholder="Timing, duration, and temporal patterns"
-              className="bg-slate-900/50 border-slate-700 text-slate-300 text-sm"
-            />
+            <label style={{ ...sectionLabel('#8b5cf6'), marginBottom: 6 }}>Temporal Factors</label>
+            <input value={newPrediction.temporal_factors} onChange={(e) => setNewPrediction({ ...newPrediction, temporal_factors: e.target.value })}
+              placeholder="Timing, duration, temporal patterns" style={inputStyle} />
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="text-xs uppercase tracking-wider text-slate-600 mb-2 block">
-                Probability %
-              </label>
-              <Input
-                type="number"
-                min="0"
-                max="100"
-                value={newPrediction.probability}
-                onChange={(e) => setNewPrediction({ ...newPrediction, probability: parseInt(e.target.value) || 0 })}
-                className="bg-slate-900/50 border-slate-700 text-slate-200"
-              />
-            </div>
-            <div>
-              <label className="text-xs uppercase tracking-wider text-slate-600 mb-2 block">
-                CI Lower %
-              </label>
-              <Input
-                type="number"
-                min="0"
-                max="100"
-                value={newPrediction.confidence_interval.lower}
-                onChange={(e) => setNewPrediction({ 
-                  ...newPrediction, 
-                  confidence_interval: { ...newPrediction.confidence_interval, lower: parseInt(e.target.value) || 0 }
-                })}
-                className="bg-slate-900/50 border-slate-700 text-slate-200"
-              />
-            </div>
-            <div>
-              <label className="text-xs uppercase tracking-wider text-slate-600 mb-2 block">
-                CI Upper %
-              </label>
-              <Input
-                type="number"
-                min="0"
-                max="100"
-                value={newPrediction.confidence_interval.upper}
-                onChange={(e) => setNewPrediction({ 
-                  ...newPrediction, 
-                  confidence_interval: { ...newPrediction.confidence_interval, upper: parseInt(e.target.value) || 0 }
-                })}
-                className="bg-slate-900/50 border-slate-700 text-slate-200"
-              />
-            </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+            {[['Probability %', 'probability', 'number'], ['CI Lower %', 'confidence_interval.lower', 'number'], ['CI Upper %', 'confidence_interval.upper', 'number']].map(([lbl, field, type]) => (
+              <div key={field}>
+                <label style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: t.label, display: 'block', marginBottom: 6 }}>{lbl}</label>
+                <input type={type} min="0" max="100"
+                  value={field.includes('.') ? newPrediction.confidence_interval[field.split('.')[1]] : newPrediction[field]}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value) || 0;
+                    if (field.includes('.')) {
+                      const child = field.split('.')[1];
+                      setNewPrediction({ ...newPrediction, confidence_interval: { ...newPrediction.confidence_interval, [child]: val } });
+                    } else {
+                      setNewPrediction({ ...newPrediction, [field]: val });
+                    }
+                  }}
+                  style={inputStyle}
+                />
+              </div>
+            ))}
           </div>
 
-          <Button
-            onClick={addPrediction}
-            disabled={!newPrediction.trigger.trim() || !newPrediction.predicted_behavior.trim()}
-            variant="outline"
-            size="sm"
-            className="w-full border-slate-700 text-slate-400 hover:bg-slate-800"
-          >
-            <Plus className="h-4 w-4 mr-2" />
+          <button onClick={addPrediction} disabled={!newPrediction.trigger.trim() || !newPrediction.predicted_behavior.trim()}
+            style={{ ...glassBtnSecondary(t), padding: '9px 16px', fontSize: 13, width: '100%', justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 7, opacity: (!newPrediction.trigger.trim() || !newPrediction.predicted_behavior.trim()) ? 0.5 : 1 }}>
+            <Plus style={{ width: 14, height: 14 }} />
             Add Prediction Model
-          </Button>
+          </button>
         </div>
       )}
 
       {data.length === 0 && !editable && (
-        <p className="text-sm text-slate-500 text-center py-8">
-          No predictive models defined
-        </p>
+        <p style={{ fontSize: 13, color: t.muted, textAlign: 'center', padding: '32px 0' }}>No predictive models defined</p>
       )}
     </div>
   );
