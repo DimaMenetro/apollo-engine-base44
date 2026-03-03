@@ -69,8 +69,7 @@ export default function GlassTabBar({ currentPageName }) {
       </div>
 
       {/* Tab bar + search row */}
-      <motion.div
-        layout
+      <div
         style={{
           display:       'flex',
           alignItems:    'center',
@@ -83,10 +82,10 @@ export default function GlassTabBar({ currentPageName }) {
         {/* ── Main tab bar pill — shrinks when search is open ── */}
         <motion.nav
           ref={navRef}
-          layout
-          animate={searchOpen ? { width: 50, minWidth: 50 } : { width: '100%', minWidth: 0 }}
+          animate={searchOpen ? { width: 50, flexShrink: 0 } : { width: 'auto', flexShrink: 0 }}
           transition={{ type: 'spring', stiffness: 420, damping: 36 }}
           initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
           style={{
             ...glassTabBar(t),
             position:   'relative',
@@ -94,6 +93,7 @@ export default function GlassTabBar({ currentPageName }) {
             alignItems: 'stretch',
             padding:    6,
             overflow:   'hidden',
+            flex:       searchOpen ? '0 0 50px' : '1 1 auto',
           }}
         >
           {/* Sliding indicator — hide when search open */}
