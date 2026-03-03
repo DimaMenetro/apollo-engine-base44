@@ -84,22 +84,21 @@ export default function SearchBar({ t, isDark, isExpanded, onExpand, onCollapse 
             cursor: 'pointer', border: 'none', flexShrink: 0,
           }}
         >
-          <Search style={{ width: 18, height: 18, color: t.tabText }} />
+          <Search style={{ width: 19, height: 19, color: t.tabText }} />
         </motion.button>
       )}
 
-      {/* Expanded: full search pill */}
+      {/* Expanded: full search pill — magnifier on RIGHT like reference */}
       {isExpanded && (
         <motion.div
           layoutId="search-pill"
           style={{
             ...glassPill,
             display: 'flex', alignItems: 'center', gap: 10,
-            padding: '0 14px', height: 50, width: '100%',
+            padding: '0 16px', height: 50, width: '100%',
             position: 'relative',
           }}
         >
-          <Search style={{ width: 15, height: 15, color: t.accent, flexShrink: 0 }} />
           <input
             ref={inputRef}
             value={query}
@@ -110,12 +109,11 @@ export default function SearchBar({ t, isDark, isExpanded, onExpand, onCollapse 
               fontSize: 14, color: t.title, fontFamily: 'inherit',
             }}
           />
-          {loading && (
-            <div style={{ width: 14, height: 14, borderRadius: '50%', border: `2px solid ${t.accent}`, borderTopColor: 'transparent', animation: 'spin 0.7s linear infinite', flexShrink: 0 }} />
+          {loading ? (
+            <div style={{ width: 15, height: 15, borderRadius: '50%', border: `2px solid ${t.accent}`, borderTopColor: 'transparent', animation: 'spin 0.7s linear infinite', flexShrink: 0 }} />
+          ) : (
+            <Search style={{ width: 17, height: 17, color: t.muted, flexShrink: 0 }} />
           )}
-          <button onClick={onCollapse} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: t.muted, flexShrink: 0 }}>
-            <X style={{ width: 15, height: 15 }} />
-          </button>
         </motion.div>
       )}
 
