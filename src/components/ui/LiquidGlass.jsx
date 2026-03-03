@@ -104,9 +104,9 @@ export const dark = {
     '0 1px 3px rgba(0,0,0,0.22)',               // micro crisp
   ].join(', '),
 
-  surface:         'rgba(255,255,255,0.045)',
-  surfaceBorder:   'rgba(255,255,255,0.07)',
-  surfaceShadow:   'inset 0 1px 0 0 rgba(255,255,255,0.07), inset 0 -1px 0 0 rgba(0,0,0,0.25)',
+  surface:         'rgba(255,255,255,0.04)',
+  surfaceBorder:   'rgba(255,255,255,0.08)',
+  surfaceShadow:   'inset 0 1px 0 0 rgba(255,255,255,0.09), inset 0 -1px 0 0 rgba(0,0,0,0.30)',
 
   // Tab bar pill — heavier glass so it floats above the dark content
   tabBar:          'rgba(28,28,36,0.72)',
