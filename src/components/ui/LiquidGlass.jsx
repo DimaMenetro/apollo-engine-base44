@@ -3,56 +3,67 @@
 // Single source of truth for all glass materials. Never hand-write glass styles inline.
 
 // ─── LIGHT THEME TOKENS ───────────────────────────────────────────────────────
+// Aesthetic: warm frosted bone-white — like brushed aluminium lit from above.
+// Apollo accent (amber) stays alive as a warm blush beneath the glass layers.
 export const light = {
-  page:            'linear-gradient(145deg, #e8edf5 0%, #dde4ef 40%, #e4dff0 100%)',
-  orb1:            'radial-gradient(circle, rgba(245,158,11,0.28) 0%, transparent 70%)',
-  orb2:            'radial-gradient(circle, rgba(139,92,246,0.22) 0%, transparent 70%)',
-  orb3:            'radial-gradient(circle, rgba(6,182,212,0.18) 0%, transparent 70%)',
+  // Warm creamy canvas — very slightly warm so amber orbs feel natural
+  page:            'linear-gradient(160deg, #f5f0eb 0%, #ede8e0 35%, #ece8f2 70%, #e8edf5 100%)',
 
-  card:            'rgba(255,255,255,0.42)',
-  cardBorder:      'rgba(255,255,255,0.55)',
-  cardShadow:      'inset 0 1px 0 0 rgba(255,255,255,0.85), inset 0 -1px 0 0 rgba(0,0,0,0.06), 0 8px 32px rgba(100,110,160,0.10), 0 1px 3px rgba(0,0,0,0.05)',
+  // Orbs — same hues as dark but more delicate opacity (they're tinting, not glowing)
+  orb1:            'radial-gradient(circle, rgba(245,158,11,0.18) 0%, transparent 65%)',
+  orb2:            'radial-gradient(circle, rgba(139,92,246,0.14) 0%, transparent 65%)',
+  orb3:            'radial-gradient(circle, rgba(6,182,212,0.10) 0%, transparent 65%)',
 
-  surface:         'rgba(255,255,255,0.32)',
-  surfaceBorder:   'rgba(255,255,255,0.45)',
-  surfaceShadow:   'inset 0 1px 0 0 rgba(255,255,255,0.75), inset 0 -1px 0 0 rgba(0,0,0,0.04)',
+  // Cards: heavy frosted white — the backdrop blur turns orb colours into a warm blush
+  card:            'rgba(255,255,255,0.52)',
+  cardBorder:      'rgba(255,255,255,0.80)',
+  cardShadow:      'inset 0 1.5px 0 0 rgba(255,255,255,0.95), inset 0 -1px 0 0 rgba(0,0,0,0.05), 0 8px 32px rgba(80,70,60,0.08), 0 2px 6px rgba(0,0,0,0.04)',
 
-  tabBar:          'rgba(255,255,255,0.50)',
-  tabBarBorder:    'rgba(255,255,255,0.60)',
-  tabBarShadow:    'inset 0 1px 0 0 rgba(255,255,255,0.90), inset 0 -1px 0 0 rgba(0,0,0,0.05), 0 6px 24px rgba(100,110,160,0.08)',
+  // Surface: slightly more transparent — used for inner panels
+  surface:         'rgba(255,255,255,0.38)',
+  surfaceBorder:   'rgba(255,255,255,0.65)',
+  surfaceShadow:   'inset 0 1px 0 0 rgba(255,255,255,0.88), inset 0 -1px 0 0 rgba(0,0,0,0.04)',
 
-  tabActive:       'rgba(255,255,255,0.65)',
-  tabActiveBorder: 'rgba(255,255,255,0.75)',
-  tabActiveShadow: 'inset 0 1px 0 0 rgba(255,255,255,0.90), inset 0 -1px 0 0 rgba(0,0,0,0.04), 0 2px 6px rgba(0,0,0,0.05)',
+  // Tab bar: lush milky pill
+  tabBar:          'rgba(255,255,255,0.62)',
+  tabBarBorder:    'rgba(255,255,255,0.82)',
+  tabBarShadow:    'inset 0 1.5px 0 0 rgba(255,255,255,0.98), inset 0 -1px 0 0 rgba(0,0,0,0.04), 0 8px 30px rgba(80,70,60,0.07)',
 
-  accessory:       'rgba(255,255,255,0.45)',
-  accessoryBorder: 'rgba(255,255,255,0.55)',
-  accessoryShadow: 'inset 0 1px 0 0 rgba(255,255,255,0.88), inset 0 -1px 0 0 rgba(0,0,0,0.05), 0 4px 16px rgba(100,110,160,0.08)',
+  // Active tab: clean raised capsule
+  tabActive:       'rgba(255,255,255,0.88)',
+  tabActiveBorder: 'rgba(255,255,255,0.95)',
+  tabActiveShadow: 'inset 0 1px 0 0 rgba(255,255,255,1.0), inset 0 -1px 0 0 rgba(0,0,0,0.04), 0 3px 10px rgba(0,0,0,0.06)',
 
-  // Primary action: Apollo amber
-  btn:             'linear-gradient(145deg, rgba(245,158,11,0.88) 0%, rgba(217,119,6,0.93) 100%)',
-  btnBorder:       'rgba(255,255,255,0.28)',
-  btnShadow:       'inset 0 1px 0 0 rgba(255,255,255,0.32), inset 0 -1px 0 0 rgba(0,0,0,0.14), 0 6px 20px rgba(245,158,11,0.28)',
+  // Accessory lozenge
+  accessory:       'rgba(255,255,255,0.55)',
+  accessoryBorder: 'rgba(255,255,255,0.78)',
+  accessoryShadow: 'inset 0 1px 0 0 rgba(255,255,255,0.95), inset 0 -1px 0 0 rgba(0,0,0,0.04), 0 4px 16px rgba(80,70,60,0.07)',
 
-  // Secondary / ghost button
-  btnSecondary:    'linear-gradient(145deg, rgba(71,85,105,0.15) 0%, rgba(51,65,85,0.20) 100%)',
-  btnSecondaryBorder: 'rgba(0,0,0,0.12)',
-  btnSecondaryShadow: 'inset 0 1px 0 0 rgba(255,255,255,0.50), inset 0 -1px 0 0 rgba(0,0,0,0.06)',
+  // Primary: Apollo amber — slightly richer in light mode for contrast
+  btn:             'linear-gradient(145deg, #f59e0b 0%, #d97706 100%)',
+  btnBorder:       'rgba(255,255,255,0.40)',
+  btnShadow:       'inset 0 1px 0 0 rgba(255,255,255,0.40), inset 0 -1px 0 0 rgba(0,0,0,0.18), 0 6px 20px rgba(245,158,11,0.32)',
 
-  successBg:       'rgba(240,253,244,0.55)',
-  successBorder:   'rgba(134,239,172,0.4)',
-  errorBg:         'rgba(254,226,226,0.5)',
-  errorBorder:     'rgba(252,165,165,0.4)',
+  // Secondary / ghost
+  btnSecondary:    'linear-gradient(145deg, rgba(255,255,255,0.55) 0%, rgba(245,240,235,0.65) 100%)',
+  btnSecondaryBorder: 'rgba(0,0,0,0.09)',
+  btnSecondaryShadow: 'inset 0 1px 0 0 rgba(255,255,255,0.90), inset 0 -1px 0 0 rgba(0,0,0,0.06)',
 
-  title:           '#1e293b',
-  subtitle:        '#64748b',
-  text:            '#334155',
-  muted:           '#94a3b8',
-  label:           '#94a3b8',
+  successBg:       'rgba(236,253,245,0.60)',
+  successBorder:   'rgba(110,231,183,0.45)',
+  errorBg:         'rgba(255,241,242,0.60)',
+  errorBorder:     'rgba(253,164,175,0.45)',
+
+  // Typography — warm dark slate (not pure black)
+  title:           '#1c1917',
+  subtitle:        '#57534e',
+  text:            '#44403c',
+  muted:           '#a8a29e',
+  label:           '#78716c',
   accent:          '#d97706',
 
-  tabText:         '#64748b',
-  tabTextActive:   '#1e293b',
+  tabText:         '#78716c',
+  tabTextActive:   '#1c1917',
 };
 
 // ─── DARK THEME TOKENS (Apollo Primary) ───────────────────────────────────────
