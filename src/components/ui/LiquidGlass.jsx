@@ -108,17 +108,33 @@ export const dark = {
   surfaceBorder:   'rgba(255,255,255,0.07)',
   surfaceShadow:   'inset 0 1px 0 0 rgba(255,255,255,0.07), inset 0 -1px 0 0 rgba(0,0,0,0.25)',
 
-  tabBar:          'rgba(255,255,255,0.065)',
+  // Tab bar pill — heavier glass so it floats above the dark content
+  tabBar:          'rgba(28,28,36,0.72)',
   tabBarBorder:    'rgba(255,255,255,0.10)',
-  tabBarShadow:    'inset 0 1px 0 0 rgba(255,255,255,0.10), inset 0 -1px 0 0 rgba(0,0,0,0.30), 0 6px 24px rgba(0,0,0,0.25)',
+  tabBarShadow:    [
+    'inset 0 1px 0 0 rgba(255,255,255,0.12)',
+    'inset 0 -1px 0 0 rgba(0,0,0,0.45)',
+    '0 8px 32px rgba(0,0,0,0.40)',
+    '0 2px 8px rgba(0,0,0,0.28)',
+  ].join(', '),
 
-  tabActive:       'rgba(255,255,255,0.10)',
-  tabActiveBorder: 'rgba(255,255,255,0.15)',
-  tabActiveShadow: 'inset 0 1px 0 0 rgba(255,255,255,0.12), inset 0 -1px 0 0 rgba(0,0,0,0.20), 0 2px 6px rgba(0,0,0,0.18)',
+  // Active tab: solid raised capsule — like Apple Podcasts dark reference
+  tabActive:       'rgba(255,255,255,0.13)',
+  tabActiveBorder: 'rgba(255,255,255,0.18)',
+  tabActiveShadow: [
+    'inset 0 1px 0 0 rgba(255,255,255,0.14)',
+    'inset 0 -1px 0 0 rgba(0,0,0,0.25)',
+    '0 2px 8px rgba(0,0,0,0.22)',
+  ].join(', '),
 
-  accessory:       'rgba(255,255,255,0.055)',
-  accessoryBorder: 'rgba(255,255,255,0.09)',
-  accessoryShadow: 'inset 0 1px 0 0 rgba(255,255,255,0.09), inset 0 -1px 0 0 rgba(0,0,0,0.28), 0 4px 16px rgba(0,0,0,0.22)',
+  // Accessory lozenge — matches tab bar material
+  accessory:       'rgba(28,28,36,0.78)',
+  accessoryBorder: 'rgba(255,255,255,0.10)',
+  accessoryShadow: [
+    'inset 0 1px 0 0 rgba(255,255,255,0.10)',
+    'inset 0 -1px 0 0 rgba(0,0,0,0.42)',
+    '0 6px 24px rgba(0,0,0,0.36)',
+  ].join(', '),
 
   // Primary action: Apollo amber — warm and punchy against the dark canvas
   btn:             'linear-gradient(145deg, rgba(245,158,11,0.90) 0%, rgba(217,119,6,0.95) 100%)',
