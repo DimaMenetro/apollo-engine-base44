@@ -171,7 +171,11 @@ export default function GlassTabBar({ currentPageName }) {
         </motion.nav>
 
         {/* ── Search disc / expanded bar ── */}
-        <div style={{ flex: searchOpen ? 1 : '0 0 50px', minWidth: 50, overflow: 'visible', transition: 'flex 0.35s ease' }}>
+        <motion.div
+          animate={searchOpen ? { flex: 1 } : { flex: 0, flexBasis: 50 }}
+          transition={{ type: 'spring', stiffness: 420, damping: 36 }}
+          style={{ minWidth: 50, overflow: 'visible' }}
+        >
           <SearchBar
             t={t}
             isDark={isDark}
@@ -179,7 +183,7 @@ export default function GlassTabBar({ currentPageName }) {
             onExpand={() => setSearchOpen(true)}
             onCollapse={() => setSearchOpen(false)}
           />
-        </div>
+        </motion.div>
       </div>
     </div>
   );
