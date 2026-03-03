@@ -233,6 +233,7 @@ export default function Processing() {
         setAnalysisResults(prev => ({ ...prev, [module.key]: results[module.key] }));
         setModuleStatuses(prev => ({ ...prev, [module.key]: 'complete' }));
         setErrorDetails(prev => ({ ...prev, [module.key]: null }));
+        updateProgress(module.title, Math.round(((i + 1) / analysisModules.length) * 100));
       } catch (error) {
         console.error(`Error analyzing ${module.key}:`, error);
         setModuleStatuses(prev => ({ ...prev, [module.key]: 'error' }));
