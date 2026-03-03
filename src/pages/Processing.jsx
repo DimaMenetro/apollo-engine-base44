@@ -1,81 +1,33 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
+import { useTheme } from '../components/theme/ThemeProvider';
+import { light, dark, glassCard, glassBtn, glassBtnSecondary } from '../components/ui/LiquidGlass';
 import { useAccessory } from '../components/ui/AccessoryContext';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { 
-  ArrowLeft, 
-  ArrowRight,
-  Loader2,
-  FileText,
-  Brain,
-  PenTool,
-  Activity,
-  GitBranch,
-  AlertTriangle,
-  CheckCircle2
-} from 'lucide-react';
+import { ArrowLeft, ArrowRight, Loader2, FileText, Brain, PenTool, Activity, GitBranch, AlertTriangle } from 'lucide-react';
 import AnalysisModule from '../components/processing/AnalysisModule';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const analysisModules = [
-  {
-    key: 'stylometric_fingerprint',
-    title: 'Module 4.1: Text Logic',
-    description: 'Extract syntax patterns + word choice',
-    outputLabel: 'Stylometric Fingerprint',
-    icon: FileText,
-    color: 'amber',
-    requiredStream: 'stream_a_text',
-  },
-  {
-    key: 'cognitive_architecture',
-    title: 'Module 4.2: Cognitive Logic',
-    description: 'Map reasoning chains + defense mechanisms',
-    outputLabel: 'Cognitive Architecture',
-    icon: Brain,
-    color: 'violet',
-    requiredStream: 'stream_a_text',
-  },
-  {
-    key: 'psychomotor_state',
-    title: 'Module 4.3: Graphology Logic',
-    description: 'Analyze stroke/pressure from handwriting',
-    outputLabel: 'Psychomotor State',
-    icon: PenTool,
-    color: 'cyan',
-    requiredStream: 'stream_e_analog',
-  },
-  {
-    key: 'affective_state',
-    title: 'Module 4.4: Bio-Signal Logic',
-    description: 'Audio pitch/tone + video micro-expressions',
-    outputLabel: 'Affective State',
-    icon: Activity,
-    color: 'rose',
-    requiredStreams: ['stream_b_audio', 'stream_c_video'],
-  },
-  {
-    key: 'behavioral_loop',
-    title: 'Module 4.5: Agentic Logic',
-    description: 'Analyze timing of actions + recursive habits',
-    outputLabel: 'Behavioral Loop',
-    icon: GitBranch,
-    color: 'emerald',
-    requiredStream: 'stream_d_behavioral',
-  },
+  { key: 'stylometric_fingerprint', title: 'Module 4.1: Text Logic',       description: 'Extract syntax patterns + word choice',              outputLabel: 'Stylometric Fingerprint', icon: FileText,   color: 'amber',   requiredStream: 'stream_a_text'       },
+  { key: 'cognitive_architecture',  title: 'Module 4.2: Cognitive Logic',   description: 'Map reasoning chains + defense mechanisms',          outputLabel: 'Cognitive Architecture',  icon: Brain,      color: 'violet',  requiredStream: 'stream_a_text'       },
+  { key: 'psychomotor_state',       title: 'Module 4.3: Graphology Logic',  description: 'Analyze stroke/pressure from handwriting',           outputLabel: 'Psychomotor State',       icon: PenTool,    color: 'cyan',    requiredStream: 'stream_e_analog'     },
+  { key: 'affective_state',         title: 'Module 4.4: Bio-Signal Logic',  description: 'Audio pitch/tone + video micro-expressions',         outputLabel: 'Affective State',         icon: Activity,   color: 'rose',    requiredStreams: ['stream_b_audio', 'stream_c_video'] },
+  { key: 'behavioral_loop',         title: 'Module 4.5: Agentic Logic',     description: 'Analyze timing of actions + recursive habits',       outputLabel: 'Behavioral Loop',         icon: GitBranch,  color: 'emerald', requiredStream: 'stream_d_behavioral' },
 ];
 
 export default function Processing() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { isDark } = useTheme();
+  const t = isDark ? dark : light;
+
   const urlParams = new URLSearchParams(window.location.search);
   const subjectId = urlParams.get('id');
 
-  const { startProcessing, updateProgress, finishProcessing, failProcessing } = useAccessory();
+  const { startProcessing, updateProgress, finishProcessing } = useAccessory();
 
   const [moduleStatuses, setModuleStatuses] = useState({});
   const [analysisResults, setAnalysisResults] = useState({});
@@ -87,8 +39,7 @@ export default function Processing() {
   const { data: subjectData, isLoading } = useQuery({
     queryKey: ['subject', subjectId],
     queryFn: () => base44.entities.Subject.filter({ id: subjectId }),
-    enabled: !!subjectId,
-    retry: 1,
+    enabled: !!subjectId, retry: 1,
   });
 
   const subject = subjectData?.[0];
@@ -110,72 +61,65 @@ export default function Processing() {
       const fileName = url.split('/').pop().toLowerCase();
       const ext = fileName.split('.').pop();
 
-      // XLSX conversion to CSV
       if (ext === 'xlsx') {
         try {
           const csvData = await base44.integrations.Core.InvokeLLM({
             prompt: `Convert this XLSX file to CSV format. Extract the first sheet. Return ONLY the CSV data with comma-separated values, no explanation.`,
             file_urls: [url],
           });
-          
           info.push(`XLSX converted to CSV: ${fileName}`);
-          // Store CSV data as text for analysis
           enhancedPrompt = (enhancedPrompt || '') + `\n\nBehavioral data from ${fileName} (converted from XLSX):\n${csvData}`;
         } catch (error) {
-          info.push(`XLSX conversion failed for ${fileName}. Please export as CSV and re-upload.`);
+          info.push(`XLSX conversion failed for ${fileName}.`);
           throw new Error(`XLSX conversion failed: ${fileName}`);
         }
         continue;
       }
 
-      // Audio/Video processing with Hume.ai analysis
-      if (ext === 'm4a' || ext === 'mp3' || ext === 'wav' || ext === 'mp4' || ext === 'mov') {
+      if (['m4a', 'mp3', 'wav', 'mp4', 'mov'].includes(ext)) {
         try {
-          const acousticAnalysis = await base44.functions.invoke('analyzeAudio', {
-            file_url: url
-          });
-
+          const acousticAnalysis = await base44.functions.invoke('analyzeAudio', { file_url: url });
           let transcript = null;
           try {
             transcript = await base44.integrations.Core.InvokeLLM({
               prompt: `Transcribe the speech in this ${ext === 'mp4' || ext === 'mov' ? 'video' : 'audio'} file. Return only the transcript text.`,
               file_urls: [url],
             });
-            info.push(`${ext.toUpperCase()} processed: ${ext === 'mp4' || ext === 'mov' ? 'facial/prosody' : 'prosody'} analyzed + transcript generated for ${fileName}`);
-            } catch {
-            info.push(`${ext.toUpperCase()} processed: ${ext === 'mp4' || ext === 'mov' ? 'facial/prosody' : 'prosody'} analyzed, transcript unavailable for ${fileName}`);
-            }
-
-            const mediaType = (ext === 'mp4' || ext === 'mov') ? 'Video' : 'Audio';
-            enhancedPrompt = (enhancedPrompt || '') + `\n\n${mediaType} analysis for ${fileName}:\n${mediaType === 'Video' ? 'Facial Expression & ' : ''}Prosody & Emotion Data: ${JSON.stringify(acousticAnalysis.data)}\n${transcript ? `Transcript: ${transcript}` : 'Transcript: unavailable'}`;
-            } catch (error) {
-            info.push(`${ext.toUpperCase()} processing failed for ${fileName}: ${error.message}`);
-            throw new Error(`${ext === 'mp4' || ext === 'mov' ? 'Video' : 'Audio'} processing failed: ${fileName} - ${error.message}`);
-            }
+            info.push(`${ext.toUpperCase()} processed: prosody analyzed + transcript generated for ${fileName}`);
+          } catch {
+            info.push(`${ext.toUpperCase()} processed: prosody analyzed, transcript unavailable for ${fileName}`);
+          }
+          const mediaType = (ext === 'mp4' || ext === 'mov') ? 'Video' : 'Audio';
+          enhancedPrompt = (enhancedPrompt || '') + `\n\n${mediaType} analysis for ${fileName}:\nEmotion Data: ${JSON.stringify(acousticAnalysis.data)}\n${transcript ? `Transcript: ${transcript}` : 'Transcript: unavailable'}`;
+        } catch (error) {
+          info.push(`${ext.toUpperCase()} processing failed for ${fileName}: ${error.message}`);
+          throw new Error(`${ext === 'mp4' || ext === 'mov' ? 'Video' : 'Audio'} processing failed: ${fileName}`);
+        }
         continue;
       }
 
-      // Supported formats: csv, pdf, png, jpg, jpeg - pass through
       if (['csv', 'pdf', 'png', 'jpg', 'jpeg'].includes(ext)) {
         processedUrls.push(url);
         info.push(`${ext.toUpperCase()} processed: ${fileName}`);
         continue;
       }
 
-      // Unsupported format
-      info.push(`Unsupported format: ${fileName} (${ext}). Supported: CSV, PDF, PNG, JPG, JPEG, XLSX, M4A, MP3, WAV, MP4, MOV.`);
+      info.push(`Unsupported format: ${fileName} (${ext}).`);
     }
 
-    return {
-      fileUrls: processedUrls,
-      prompt: enhancedPrompt,
-      info: info.join(' | ')
-    };
+    return { fileUrls: processedUrls, prompt: enhancedPrompt, info: info.join(' | ') };
   };
+
+  const getAnalysisPrompt = (moduleKey, subjectName) => ({
+    stylometric_fingerprint: `Analyze the attached text data for subject "${subjectName}". Extract writing style patterns, word choice tendencies, emotional tone, linguistic fingerprint characteristics, and any notable deviations.`,
+    cognitive_architecture:  `Analyze the attached content for subject "${subjectName}" to map cognitive patterns: reasoning chains, defense mechanisms, decision-making patterns, and cognitive biases.`,
+    psychomotor_state:       `Analyze the attached handwriting sample for subject "${subjectName}": stroke patterns, pressure indicators, baseline stability, slant, letter formation consistency.`,
+    affective_state:         `Analyze the attached audio/video for subject "${subjectName}": vocal pitch variations, facial micro-expressions, emotional baseline, congruence between verbal and non-verbal cues.`,
+    behavioral_loop:         `Analyze the attached behavioral data for subject "${subjectName}": action timing patterns, recursive habits, decision velocity, behavioral triggers and responses.`,
+  }[moduleKey]);
 
   const runAnalysis = async () => {
     if (!subject) return;
-    
     setIsProcessing(true);
     startProcessing(subjectId, subject.name);
     const results = {};
@@ -184,32 +128,24 @@ export default function Processing() {
     for (let i = 0; i < analysisModules.length; i++) {
       const module = analysisModules[i];
       setCurrentModule(i);
-
-      // Check if required stream(s) has data
-      const hasData = module.requiredStreams 
-        ? module.requiredStreams.some(stream => subject[stream]?.length > 0)
+      const hasData = module.requiredStreams
+        ? module.requiredStreams.some(s => subject[s]?.length > 0)
         : subject[module.requiredStream]?.length > 0;
-      
-      if (!hasData) {
-        setModuleStatuses(prev => ({ ...prev, [module.key]: 'pending' }));
-        continue;
-      }
+
+      if (!hasData) { setModuleStatuses(prev => ({ ...prev, [module.key]: 'pending' })); continue; }
 
       setModuleStatuses(prev => ({ ...prev, [module.key]: 'running' }));
-      
+
       try {
-        // Simulate processing delay
         await new Promise(resolve => setTimeout(resolve, 1500));
         updateProgress(module.title, Math.round(((i + 0.5) / analysisModules.length) * 100));
 
-        // Get file URLs and preprocess if needed
-        const fileUrls = module.requiredStreams 
-          ? module.requiredStreams.flatMap(stream => subject[stream] || [])
+        const fileUrls = module.requiredStreams
+          ? module.requiredStreams.flatMap(s => subject[s] || [])
           : (subject[module.requiredStream] || []);
         const preprocessedData = await preprocessFiles(fileUrls, module.key);
-        
         const prompt = getAnalysisPrompt(module.key, subject.name);
-        
+
         const response = await base44.integrations.Core.InvokeLLM({
           prompt: preprocessedData.prompt || prompt,
           file_urls: preprocessedData.fileUrls,
@@ -226,212 +162,135 @@ export default function Processing() {
           }
         });
 
-        results[module.key] = {
-          ...response,
-          preprocessing_info: preprocessedData.info
-        };
+        results[module.key] = { ...response, preprocessing_info: preprocessedData.info };
         setAnalysisResults(prev => ({ ...prev, [module.key]: results[module.key] }));
         setModuleStatuses(prev => ({ ...prev, [module.key]: 'complete' }));
         setErrorDetails(prev => ({ ...prev, [module.key]: null }));
         updateProgress(module.title, Math.round(((i + 1) / analysisModules.length) * 100));
       } catch (error) {
-        console.error(`Error analyzing ${module.key}:`, error);
         setModuleStatuses(prev => ({ ...prev, [module.key]: 'error' }));
         setErrorDetails(prev => ({ ...prev, [module.key]: error.message || 'Analysis failed' }));
-        // Continue with other modules even if one fails
       }
     }
 
-    // Check for conflicts between modules
     if (results.stylometric_fingerprint && results.behavioral_loop) {
-      // Check if text sentiment conflicts with behavioral patterns
       const textFlags = results.stylometric_fingerprint?.flags || [];
       const behaviorFlags = results.behavioral_loop?.flags || [];
-      
-      if (textFlags.some(f => f.toLowerCase().includes('positive')) && 
-          behaviorFlags.some(f => f.toLowerCase().includes('negative'))) {
-        detectedConflicts.push({
-          type: 'text_behavior_mismatch',
-          description: 'Words conflict with Actions - prioritizing behavioral analysis',
-          resolution: 'Actions prioritized over stated intentions'
-        });
+      if (textFlags.some(f => f.toLowerCase().includes('positive')) && behaviorFlags.some(f => f.toLowerCase().includes('negative'))) {
+        detectedConflicts.push({ type: 'text_behavior_mismatch', description: 'Words conflict with Actions - prioritizing behavioral analysis', resolution: 'Actions prioritized over stated intentions' });
       }
     }
 
     if (results.stylometric_fingerprint && results.affective_state) {
-      // Check for deception indicators
       const textConf = results.stylometric_fingerprint?.confidence || 0;
       const affectConf = results.affective_state?.confidence || 0;
-      
       if (Math.abs(textConf - affectConf) > 30) {
-        detectedConflicts.push({
-          type: 'deception_flag',
-          description: 'High Prob Deception - Bio-Signal conflicts with Text',
-          resolution: 'Flagged for manual review'
-        });
+        detectedConflicts.push({ type: 'deception_flag', description: 'High Prob Deception - Bio-Signal conflicts with Text', resolution: 'Flagged for manual review' });
         setModuleStatuses(prev => ({ ...prev, affective_state: 'conflict' }));
       }
     }
 
     setConflicts(detectedConflicts);
-    
-    // Save results to subject
-    await updateMutation.mutateAsync({
-      analysis_results: results,
-      conflicts_detected: detectedConflicts,
-      status: 'review'
-    });
-
+    await updateMutation.mutateAsync({ analysis_results: results, conflicts_detected: detectedConflicts, status: 'review' });
     setIsProcessing(false);
     finishProcessing(subjectId);
-  };
-
-  const getAnalysisPrompt = (moduleKey, subjectName) => {
-    const prompts = {
-      stylometric_fingerprint: `Analyze the attached text data for subject "${subjectName}". Extract:
-- Writing style patterns (sentence length, vocabulary complexity, formality)
-- Word choice tendencies and emotional tone
-- Linguistic fingerprint characteristics
-- Any notable deviations or inconsistencies`,
-      
-      cognitive_architecture: `Analyze the attached content for subject "${subjectName}" to map cognitive patterns:
-- Reasoning chains and logical flow
-- Defense mechanisms (projection, rationalization, deflection)
-- Decision-making patterns
-- Cognitive biases present`,
-      
-      psychomotor_state: `Analyze the attached handwriting sample for subject "${subjectName}":
-- Stroke patterns and pressure indicators
-- Baseline stability and slant
-- Letter formation consistency
-- Psychomotor state indicators`,
-      
-      affective_state: `Analyze the attached audio/video for subject "${subjectName}":
-      - Vocal pitch variations and tone
-      - Facial micro-expressions (if video available)
-      - Emotional baseline assessment
-      - Congruence between verbal and non-verbal cues`,
-      
-      behavioral_loop: `Analyze the attached behavioral data for subject "${subjectName}":
-- Action timing patterns
-- Recursive habits and routines
-- Decision velocity
-- Behavioral triggers and responses`
-    };
-    
-    return prompts[moduleKey];
   };
 
   const progress = Object.values(moduleStatuses).filter(s => s === 'complete' || s === 'conflict').length;
   const totalWithData = analysisModules.filter(m => subject?.[m.requiredStream]?.length > 0).length;
   const progressPercent = totalWithData > 0 ? (progress / totalWithData) * 100 : 0;
 
-  // Helper to check if module has data
-  const moduleHasData = (module) => {
-    return module.requiredStreams 
-      ? module.requiredStreams.some(stream => subject?.[stream]?.length > 0)
+  const moduleHasData = (module) =>
+    module.requiredStreams
+      ? module.requiredStreams.some(s => subject?.[s]?.length > 0)
       : subject?.[module.requiredStream]?.length > 0;
-  };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 text-amber-500 animate-spin" />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <Loader2 style={{ width: 32, height: 32, color: '#f59e0b', animation: 'spin 1s linear infinite' }} />
       </div>
     );
   }
 
   if (!subject) {
     return (
-      <div className="max-w-4xl mx-auto text-center py-20">
-        <p className="text-slate-500">Subject not found</p>
-        <Button 
-          variant="outline" 
-          onClick={() => navigate(createPageUrl('Dashboard'))}
-          className="mt-4"
-        >
+      <div style={{ maxWidth: 600, margin: '0 auto', textAlign: 'center', padding: '80px 20px' }}>
+        <p style={{ color: t.muted, marginBottom: 16 }}>Subject not found</p>
+        <button onClick={() => navigate(createPageUrl('Dashboard'))} style={{ ...glassBtnSecondary(t), padding: '10px 24px', fontSize: 14 }}>
           Return to Dashboard
-        </Button>
+        </button>
       </div>
     );
   }
 
+  const dividerColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+
   return (
-    <div className="max-w-4xl mx-auto pb-20">
+    <div style={{ maxWidth: 800, margin: '0 auto', paddingBottom: 80 }}>
       {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
-        <Button
-          variant="ghost"
-          size="icon"
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 32 }}>
+        <button
           onClick={() => navigate(createPageUrl('Dashboard'))}
-          className="text-slate-400 hover:text-slate-200"
+          style={{ width: 36, height: 36, borderRadius: '50%', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.muted }}
         >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-light text-slate-100">
-            Processing: {subject.name}
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            DSP-{subject.id?.slice(-8).toUpperCase()}
-          </p>
+          <ArrowLeft style={{ width: 18, height: 18 }} />
+        </button>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 300, color: t.title, margin: 0 }}>Processing: {subject.name}</h1>
+          <p style={{ fontSize: 13, color: t.muted, marginTop: 6, fontFamily: 'monospace' }}>DSP-{subject.id?.slice(-8).toUpperCase()}</p>
         </div>
       </div>
 
-      {/* Progress */}
-      <div className="glass-panel-thick rounded-3xl p-6 mb-6">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-sm text-slate-400">Analysis Progress</span>
-          <span className="text-sm text-amber-500">{Math.round(progressPercent)}%</span>
+      {/* Progress Card */}
+      <div style={{ ...glassCard(t), padding: 24, marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <span style={{ fontSize: 13, color: t.subtitle }}>Analysis Progress</span>
+          <span style={{ fontSize: 13, color: '#f59e0b', fontWeight: 500 }}>{Math.round(progressPercent)}%</span>
         </div>
-        <Progress value={progressPercent} className="h-2 bg-slate-800" />
-        
+        <div style={{ height: 4, borderRadius: 999, background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)', overflow: 'hidden' }}>
+          <div style={{ height: '100%', borderRadius: 999, background: 'linear-gradient(90deg, #f59e0b, #d97706)', width: `${progressPercent}%`, transition: 'width 0.5s ease' }} />
+        </div>
         {isProcessing && (
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-xs text-slate-500 mt-3"
-          >
+          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ fontSize: 12, color: t.muted, marginTop: 10 }}>
             Running {analysisModules[currentModule]?.title}...
           </motion.p>
         )}
       </div>
 
-      {/* Conflicts Alert */}
+      {/* Conflicts */}
       <AnimatePresence>
         {conflicts.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="mb-6 p-4 rounded-xl bg-rose-500/10 border border-rose-500/30"
+            style={{ marginBottom: 20, padding: 16, borderRadius: 14, background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.25)' }}
           >
-            <div className="flex items-center gap-3 mb-2">
-              <AlertTriangle className="h-5 w-5 text-rose-500" />
-              <span className="font-medium text-rose-400">Conflicts Detected</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <AlertTriangle style={{ width: 16, height: 16, color: '#f43f5e' }} />
+              <span style={{ fontWeight: 600, color: '#f43f5e', fontSize: 14 }}>Conflicts Detected</span>
             </div>
             {conflicts.map((conflict, i) => (
-              <div key={i} className="text-sm text-rose-300/80 ml-8">
-                <p>{conflict.description}</p>
-                <p className="text-rose-400/60 text-xs mt-1">Resolution: {conflict.resolution}</p>
+              <div key={i} style={{ marginLeft: 26 }}>
+                <p style={{ fontSize: 13, color: isDark ? '#fda4af' : '#be123c', margin: '0 0 2px' }}>{conflict.description}</p>
+                <p style={{ fontSize: 11, color: isDark ? 'rgba(253,164,175,0.6)' : '#9f1239', margin: 0 }}>Resolution: {conflict.resolution}</p>
               </div>
             ))}
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Analysis Modules */}
-      <div className="space-y-4 mb-8">
+      {/* Modules */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 32 }}>
         {analysisModules.map((module) => {
           const hasData = moduleHasData(module);
           const status = !hasData ? 'pending' : moduleStatuses[module.key] || 'pending';
           const error = errorDetails[module.key];
-          const fileCount = module.requiredStreams 
-            ? module.requiredStreams.reduce((sum, stream) => sum + (subject[stream]?.length || 0), 0)
+          const fileCount = module.requiredStreams
+            ? module.requiredStreams.reduce((sum, s) => sum + (subject[s]?.length || 0), 0)
             : (subject[module.requiredStream]?.length || 0);
-          const streamInfo = module.requiredStreams 
-            ? module.requiredStreams.join(', ')
-            : module.requiredStream;
+
           return (
             <div key={module.key}>
               <AnalysisModule
@@ -445,25 +304,16 @@ export default function Processing() {
                 moduleKey={module.key}
               />
               {error && status === 'error' && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  className="mt-2 p-3 rounded-lg bg-rose-500/10 border border-rose-500/30"
-                >
-                  <p className="text-xs text-rose-400">Error: {error}</p>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Files: {fileCount} • 
-                    Stream: {streamInfo}
-                  </p>
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+                  style={{ marginTop: 6, padding: 12, borderRadius: 10, background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.25)' }}>
+                  <p style={{ fontSize: 12, color: '#f43f5e', margin: '0 0 2px' }}>Error: {error}</p>
+                  <p style={{ fontSize: 11, color: t.muted, margin: 0 }}>Files: {fileCount}</p>
                 </motion.div>
               )}
               {analysisResults[module.key]?.preprocessing_info && status === 'complete' && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  className="mt-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30"
-                >
-                  <p className="text-xs text-emerald-400">{analysisResults[module.key].preprocessing_info}</p>
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+                  style={{ marginTop: 6, padding: 12, borderRadius: 10, background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.20)' }}>
+                  <p style={{ fontSize: 12, color: '#10b981', margin: 0 }}>{analysisResults[module.key].preprocessing_info}</p>
                 </motion.div>
               )}
             </div>
@@ -472,41 +322,34 @@ export default function Processing() {
       </div>
 
       {/* Actions */}
-      <div className="flex items-center justify-between">
-        <Button
-          variant="outline"
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <button
           onClick={() => navigate(createPageUrl(`SubjectIntake?id=${subjectId}`))}
-          className="border-slate-700 text-slate-300 hover:bg-slate-800"
+          style={{ ...glassBtnSecondary(t), padding: '10px 22px', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}
         >
-          <ArrowLeft className="h-4 w-4 mr-2" />
+          <ArrowLeft style={{ width: 15, height: 15 }} />
           Edit Data
-        </Button>
-        
+        </button>
+
         {subject.status === 'review' ? (
-          <Button
+          <button
             onClick={() => navigate(createPageUrl(`SubjectReview?id=${subjectId}`))}
-            className="bg-amber-500 hover:bg-amber-600 text-slate-950 gap-2"
+            style={{ ...glassBtn(t), padding: '10px 22px', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}
           >
-            Review DSP Draft <ArrowRight className="h-4 w-4" />
-          </Button>
+            Review DSP Draft <ArrowRight style={{ width: 15, height: 15 }} />
+          </button>
         ) : (
-          <Button
+          <button
             onClick={runAnalysis}
             disabled={isProcessing}
-            className="bg-amber-500 hover:bg-amber-600 text-slate-950 gap-2"
+            style={{ ...glassBtn(t), padding: '10px 22px', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8, opacity: isProcessing ? 0.7 : 1 }}
           >
             {isProcessing ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Processing...
-              </>
+              <><Loader2 style={{ width: 15, height: 15, animation: 'spin 1s linear infinite' }} />Processing...</>
             ) : (
-              <>
-                <Activity className="h-4 w-4" />
-                Run Analysis
-              </>
+              <><Activity style={{ width: 15, height: 15 }} />Run Analysis</>
             )}
-          </Button>
+          </button>
         )}
       </div>
     </div>
