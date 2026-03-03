@@ -61,8 +61,8 @@ export default function ThemeToggle() {
 
       {/* Moon icon (left slot — active in dark) */}
       <div style={{
-        width: 30, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        position: 'relative', zIndex: 1, flexShrink: 0,
+        flex: 1, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        position: 'relative', zIndex: 1,
       }}>
         <Moon style={{
           width: 14, height: 14,
@@ -73,8 +73,8 @@ export default function ThemeToggle() {
 
       {/* Sun icon (right slot — active in light) */}
       <div style={{
-        width: 30, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        position: 'relative', zIndex: 1, flexShrink: 0,
+        flex: 1, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        position: 'relative', zIndex: 1,
       }}>
         <Sun style={{
           width: 14, height: 14,
