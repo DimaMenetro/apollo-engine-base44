@@ -1,142 +1,78 @@
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Plus, X, Target, Shield } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { useTheme } from '../theme/ThemeProvider';
+import { light, dark } from '../ui/LiquidGlass';
 
-export default function MotivationsSection({ 
-  motivations = [], 
-  fears = [], 
-  onMotivationsChange, 
-  onFearsChange,
-  editable = false 
-}) {
+export default function MotivationsSection({ motivations = [], fears = [], onMotivationsChange, onFearsChange, editable = false }) {
+  const { isDark } = useTheme();
+  const t = isDark ? dark : light;
+
   const [newMotivation, setNewMotivation] = useState('');
   const [newFear, setNewFear] = useState('');
 
   const addItem = (type) => {
-    if (type === 'motivation' && newMotivation.trim()) {
-      onMotivationsChange([...motivations, newMotivation.trim()]);
-      setNewMotivation('');
-    } else if (type === 'fear' && newFear.trim()) {
-      onFearsChange([...fears, newFear.trim()]);
-      setNewFear('');
-    }
+    if (type === 'motivation' && newMotivation.trim()) { onMotivationsChange([...motivations, newMotivation.trim()]); setNewMotivation(''); }
+    else if (type === 'fear' && newFear.trim())        { onFearsChange([...fears, newFear.trim()]);                  setNewFear(''); }
   };
 
   const removeItem = (type, index) => {
-    if (type === 'motivation') {
-      onMotivationsChange(motivations.filter((_, i) => i !== index));
-    } else {
-      onFearsChange(fears.filter((_, i) => i !== index));
-    }
+    if (type === 'motivation') onMotivationsChange(motivations.filter((_, i) => i !== index));
+    else                       onFearsChange(fears.filter((_, i) => i !== index));
   };
 
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      {/* Motivations */}
-      <div>
-        <div className="flex items-center gap-2 mb-4">
-          <Target className="h-4 w-4 text-emerald-500" />
-          <h4 className="text-sm font-medium text-slate-200">Core Motivations</h4>
-        </div>
-        
-        <div className="space-y-2">
-          {motivations.map((item, index) => (
-            <div 
-              key={index}
-              className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg"
-            >
-              <span className="flex-1 text-sm text-emerald-300">{item}</span>
-              {editable && (
-                <button
-                  onClick={() => removeItem('motivation', index)}
-                  className="text-emerald-400/50 hover:text-rose-400 transition-colors"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-          ))}
-          
-          {editable && (
-            <div className="flex items-center gap-2">
-              <Input
-                value={newMotivation}
-                onChange={(e) => setNewMotivation(e.target.value)}
-                placeholder="Add motivation..."
-                className="flex-1 h-9 bg-slate-900/50 border-slate-700 text-slate-200 text-sm"
-                onKeyDown={(e) => e.key === 'Enter' && addItem('motivation')}
-              />
-              <Button
-                onClick={() => addItem('motivation')}
-                disabled={!newMotivation.trim()}
-                size="sm"
-                variant="ghost"
-                className="h-9 text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
-          
-          {motivations.length === 0 && !editable && (
-            <p className="text-xs text-slate-500 py-2">No motivations identified</p>
-          )}
-        </div>
-      </div>
+  const inputStyle = {
+    flex: 1, padding: '8px 12px', fontSize: 13, borderRadius: 8,
+    background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+    border: `1px solid ${isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.10)'}`,
+    color: t.title, outline: 'none', fontFamily: 'inherit',
+  };
 
-      {/* Fears */}
-      <div>
-        <div className="flex items-center gap-2 mb-4">
-          <Shield className="h-4 w-4 text-rose-500" />
-          <h4 className="text-sm font-medium text-slate-200">Core Fears</h4>
-        </div>
-        
-        <div className="space-y-2">
-          {fears.map((item, index) => (
-            <div 
-              key={index}
-              className="flex items-center gap-2 px-3 py-2 bg-rose-500/10 border border-rose-500/20 rounded-lg"
-            >
-              <span className="flex-1 text-sm text-rose-300">{item}</span>
-              {editable && (
-                <button
-                  onClick={() => removeItem('fear', index)}
-                  className="text-rose-400/50 hover:text-rose-400 transition-colors"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-          ))}
-          
-          {editable && (
-            <div className="flex items-center gap-2">
-              <Input
-                value={newFear}
-                onChange={(e) => setNewFear(e.target.value)}
-                placeholder="Add fear..."
-                className="flex-1 h-9 bg-slate-900/50 border-slate-700 text-slate-200 text-sm"
-                onKeyDown={(e) => e.key === 'Enter' && addItem('fear')}
-              />
-              <Button
-                onClick={() => addItem('fear')}
-                disabled={!newFear.trim()}
-                size="sm"
-                variant="ghost"
-                className="h-9 text-rose-500 hover:text-rose-400 hover:bg-rose-500/10"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
-          
-          {fears.length === 0 && !editable && (
-            <p className="text-xs text-slate-500 py-2">No fears identified</p>
-          )}
-        </div>
+  const renderList = ({ items, type, accentColor, bgColor, borderColor, icon: Icon, title, placeholder, newVal, setNewVal }) => (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+        <Icon style={{ width: 15, height: 15, color: accentColor }} />
+        <h4 style={{ fontSize: 13, fontWeight: 500, color: t.title, margin: 0 }}>{title}</h4>
       </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {items.map((item, index) => (
+          <div key={index} style={{
+            display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 10,
+            background: bgColor, border: `1px solid ${borderColor}`,
+          }}>
+            <span style={{ flex: 1, fontSize: 13, color: accentColor }}>{item}</span>
+            {editable && (
+              <button onClick={() => removeItem(type, index)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: accentColor, opacity: 0.5, padding: 0 }}>
+                <X style={{ width: 13, height: 13 }} />
+              </button>
+            )}
+          </div>
+        ))}
+
+        {editable && (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input value={newVal} onChange={(e) => setNewVal(e.target.value)}
+              placeholder={placeholder} style={inputStyle}
+              onKeyDown={(e) => e.key === 'Enter' && addItem(type)} />
+            <button onClick={() => addItem(type)} disabled={!newVal.trim()} style={{
+              padding: '0 12px', borderRadius: 8, border: 'none', cursor: 'pointer',
+              background: bgColor, color: accentColor, opacity: !newVal.trim() ? 0.4 : 1,
+            }}>
+              <Plus style={{ width: 14, height: 14 }} />
+            </button>
+          </div>
+        )}
+
+        {items.length === 0 && !editable && (
+          <p style={{ fontSize: 12, color: t.muted, margin: 0 }}>No {title.toLowerCase()} identified</p>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 24 }}>
+      {renderList({ items: motivations, type: 'motivation', accentColor: '#10b981', bgColor: 'rgba(16,185,129,0.10)', borderColor: 'rgba(16,185,129,0.20)', icon: Target,  title: 'Core Motivations', placeholder: 'Add motivation...', newVal: newMotivation, setNewVal: setNewMotivation })}
+      {renderList({ items: fears,       type: 'fear',       accentColor: '#f43f5e', bgColor: 'rgba(244,63,94,0.10)',  borderColor: 'rgba(244,63,94,0.20)',  icon: Shield, title: 'Core Fears',       placeholder: 'Add fear...',       newVal: newFear,        setNewVal: setNewFear })}
     </div>
   );
 }
