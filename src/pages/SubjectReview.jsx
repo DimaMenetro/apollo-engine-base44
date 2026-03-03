@@ -3,21 +3,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
-import { 
-  ArrowLeft, 
-  Lock,
-  Loader2,
-  FileText,
-  Brain,
-  GitBranch,
-  AlertTriangle,
-  Edit3,
-  Save,
-  CheckCircle2
-} from 'lucide-react';
+import { useTheme } from '../components/theme/ThemeProvider';
+import { light, dark, glassCard, glassBtn, glassBtnSecondary } from '../components/ui/LiquidGlass';
+import { ArrowLeft, Lock, Loader2, FileText, Brain, GitBranch, AlertTriangle, Edit3, Save, CheckCircle2 } from 'lucide-react';
 import PersonalityMatrix from '../components/review/PersonalityMatrix';
 import ActionResponseMatrix from '../components/review/ActionResponseMatrix';
 import MotivationsSection from '../components/review/MotivationsSection';
@@ -28,144 +16,49 @@ import { formatDocumentId } from '../components/utils/formatDocumentId';
 export default function SubjectReview() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { isDark } = useTheme();
+  const t = isDark ? dark : light;
+
   const urlParams = new URLSearchParams(window.location.search);
   const subjectId = urlParams.get('id');
 
   const [isEditing, setIsEditing] = useState(true);
   const [dsp, setDsp] = useState({
-    document_id: '',
-    protocol_version: 'CP-003-O-D-APL v2.1',
-    date_of_synthesis: '',
-    confidence_score: 75,
-    executive_summary: '',
-    classification: '',
-    personality_matrix: {},
-    cognitive_architecture: {
-      thinking_style: '',
-      epistemic_requirements: '',
-      defense_mechanisms: ''
-    },
-    behavioral_patterns: [],
-    cognitive_map: {},
-    action_response_matrix: [],
-    motivations: [],
-    fears: [],
+    document_id: '', protocol_version: 'CP-003-O-D-APL v2.1', date_of_synthesis: '',
+    confidence_score: 75, executive_summary: '', classification: '',
+    personality_matrix: {}, cognitive_architecture: { thinking_style: '', epistemic_requirements: '', defense_mechanisms: '' },
+    behavioral_patterns: [], cognitive_map: {}, action_response_matrix: [], motivations: [], fears: [],
   });
 
   const { data: subjectData, isLoading } = useQuery({
     queryKey: ['subject', subjectId],
     queryFn: () => base44.entities.Subject.filter({ id: subjectId }),
-    enabled: !!subjectId,
-    retry: 1,
+    enabled: !!subjectId, retry: 1,
   });
 
   const subject = subjectData?.[0];
 
   useEffect(() => {
-    if (subject?.dsp) {
-      setDsp({
-        ...dsp,
-        ...subject.dsp
-      });
-    }
+    if (subject?.dsp) setDsp(prev => ({ ...prev, ...subject.dsp }));
   }, [subject]);
 
   useEffect(() => {
-    if (subject?.analysis_results && !subject.dsp?.executive_summary) {
-      generateDraftDSP();
-    }
+    if (subject?.analysis_results && !subject.dsp?.executive_summary) generateDraftDSP();
   }, [subject?.analysis_results]);
 
   const generateDraftDSP = async () => {
     if (!subject?.analysis_results) return;
-
     const analysisContext = JSON.stringify(subject.analysis_results);
-    
     const response = await base44.integrations.Core.InvokeLLM({
-      prompt: `Based on the following analysis results for subject "${subject.name}", generate a comprehensive psychological profile draft:
-
-Analysis Results:
-${analysisContext}
-
-Generate:
-1. Executive Summary (2-3 paragraphs describing the subject's overall psychological profile)
-2. Classification (single phrase like "High-Functioning Strategic Thinker" or "Risk-Averse Methodical Planner")
-3. Big Five Personality scores (0-100) with brief evidence for each:
-   - Openness
-   - Conscientiousness  
-   - Extraversion
-   - Agreeableness
-   - Neuroticism
-4. Cognitive Architecture:
-   - Thinking Style (2-3 sentences on how the subject processes information and makes decisions)
-   - Epistemic Requirements (2-3 sentences on what the subject needs to know/understand)
-   - Defense Mechanisms (2-3 sentences identifying specific mechanisms like DARVO, Splitting, etc.)
-5. Behavioral Patterns (2-3 patterns with label, description, and context/frequency)
-6. 3-5 behavioral predictions with:
-  - Trigger event (what precipitates the behavior)
-  - Contextual factors (environmental/social conditions)
-  - Predicted behavior (detailed expected response)
-  - Probability percentage (0-100)
-  - Confidence interval (lower and upper bounds)
-  - Temporal factors (timing, duration)
-7. 3-5 core motivations
-8. 3-5 core fears
-9. Confidence score (0-100)`,
+      prompt: `Based on the following analysis results for subject "${subject.name}", generate a comprehensive psychological profile draft:\n\nAnalysis Results:\n${analysisContext}\n\nGenerate: executive summary, classification, Big Five personality scores, cognitive architecture, behavioral patterns, behavioral predictions, motivations, fears, confidence score.`,
       response_json_schema: {
         type: "object",
         properties: {
-          executive_summary: { type: "string" },
-          classification: { type: "string" },
-          confidence_score: { type: "number" },
-          personality_matrix: {
-            type: "object",
-            properties: {
-              openness: { type: "object", properties: { score: { type: "number" }, evidence: { type: "string" } } },
-              conscientiousness: { type: "object", properties: { score: { type: "number" }, evidence: { type: "string" } } },
-              extraversion: { type: "object", properties: { score: { type: "number" }, evidence: { type: "string" } } },
-              agreeableness: { type: "object", properties: { score: { type: "number" }, evidence: { type: "string" } } },
-              neuroticism: { type: "object", properties: { score: { type: "number" }, evidence: { type: "string" } } },
-            }
-          },
-          cognitive_architecture: {
-            type: "object",
-            properties: {
-              thinking_style: { type: "string" },
-              epistemic_requirements: { type: "string" },
-              defense_mechanisms: { type: "string" }
-            }
-          },
-          behavioral_patterns: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                label: { type: "string" },
-                description: { type: "string" },
-                context: { type: "string" }
-              }
-            }
-          },
-          predictions: { 
-            type: "array", 
-            items: { 
-              type: "object", 
-              properties: { 
-                trigger: { type: "string" }, 
-                context: { type: "string" },
-                predicted_behavior: { type: "string" },
-                probability: { type: "number" },
-                confidence_interval: { 
-                  type: "object",
-                  properties: {
-                    lower: { type: "number" },
-                    upper: { type: "number" }
-                  }
-                },
-                temporal_factors: { type: "string" }
-              } 
-            } 
-          },
+          executive_summary: { type: "string" }, classification: { type: "string" }, confidence_score: { type: "number" },
+          personality_matrix: { type: "object", properties: { openness: { type: "object" }, conscientiousness: { type: "object" }, extraversion: { type: "object" }, agreeableness: { type: "object" }, neuroticism: { type: "object" } } },
+          cognitive_architecture: { type: "object", properties: { thinking_style: { type: "string" }, epistemic_requirements: { type: "string" }, defense_mechanisms: { type: "string" } } },
+          behavioral_patterns: { type: "array", items: { type: "object", properties: { label: { type: "string" }, description: { type: "string" }, context: { type: "string" } } } },
+          predictions: { type: "array", items: { type: "object", properties: { trigger: { type: "string" }, context: { type: "string" }, predicted_behavior: { type: "string" }, probability: { type: "number" }, confidence_interval: { type: "object", properties: { lower: { type: "number" }, upper: { type: "number" } } }, temporal_factors: { type: "string" } } } },
           motivations: { type: "array", items: { type: "string" } },
           fears: { type: "array", items: { type: "string" } }
         }
@@ -173,21 +66,15 @@ Generate:
     });
 
     const today = new Date().toISOString().split('T')[0];
-    const docId = `DSP-${subject.id?.slice(-6) || '000'}-CP-003-APL`;
-    
     setDsp({
-      document_id: docId,
+      document_id: `DSP-${subject.id?.slice(-6) || '000'}-CP-003-APL`,
       protocol_version: 'CP-003-O-D-APL v2.1',
       date_of_synthesis: today,
       confidence_score: response.confidence_score || 75,
       executive_summary: response.executive_summary || '',
       classification: response.classification || '',
       personality_matrix: response.personality_matrix || {},
-      cognitive_architecture: response.cognitive_architecture || {
-        thinking_style: '',
-        epistemic_requirements: '',
-        defense_mechanisms: ''
-      },
+      cognitive_architecture: response.cognitive_architecture || { thinking_style: '', epistemic_requirements: '', defense_mechanisms: '' },
       behavioral_patterns: response.behavioral_patterns || [],
       cognitive_map: {},
       action_response_matrix: response.predictions || [],
@@ -198,10 +85,7 @@ Generate:
 
   const updateMutation = useMutation({
     mutationFn: (data) => base44.entities.Subject.update(subjectId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['subject', subjectId]);
-      queryClient.invalidateQueries(['subjects']);
-    },
+    onSuccess: () => { queryClient.invalidateQueries(['subject', subjectId]); queryClient.invalidateQueries(['subjects']); },
   });
 
   const handleSaveDraft = async () => {
@@ -220,380 +104,244 @@ Generate:
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 text-amber-500 animate-spin" />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <Loader2 style={{ width: 32, height: 32, color: '#f59e0b', animation: 'spin 1s linear infinite' }} />
       </div>
     );
   }
 
   if (!subject) {
     return (
-      <div className="max-w-4xl mx-auto text-center py-20">
-        <p className="text-slate-500">Subject not found</p>
-        <Button 
-          variant="outline" 
-          onClick={() => navigate(createPageUrl('Dashboard'))}
-          className="mt-4"
-        >
+      <div style={{ maxWidth: 600, margin: '0 auto', textAlign: 'center', padding: '80px 20px' }}>
+        <p style={{ color: t.muted, marginBottom: 16 }}>Subject not found</p>
+        <button onClick={() => navigate(createPageUrl('Dashboard'))} style={{ ...glassBtnSecondary(t), padding: '10px 24px', fontSize: 14 }}>
           Return to Dashboard
-        </Button>
+        </button>
       </div>
     );
   }
 
+  const textareaStyle = {
+    width: '100%', borderRadius: 10, padding: '10px 14px', fontSize: 14, lineHeight: 1.6,
+    background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
+    border: `1px solid ${isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.09)'}`,
+    color: t.title, outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box',
+  };
+
+  const inputStyle = {
+    width: '100%', borderRadius: 10, padding: '10px 14px', fontSize: 14,
+    background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
+    border: `1px solid ${isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.09)'}`,
+    color: t.title, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box',
+  };
+
+  const labelStyle = { fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.12em', color: t.label, display: 'block', marginBottom: 8 };
+  const sectionCard = { ...glassCard(t), padding: 24 };
+
   return (
-    <div className="max-w-5xl mx-auto pb-20">
+    <div style={{ maxWidth: 900, margin: '0 auto', paddingBottom: 80 }}>
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <button
             onClick={() => navigate(createPageUrl('Dashboard'))}
-            className="text-slate-400 hover:text-slate-200"
+            style={{ width: 36, height: 36, borderRadius: '50%', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.muted }}
           >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
+            <ArrowLeft style={{ width: 18, height: 18 }} />
+          </button>
           <div>
-            <h1 className="text-2xl font-light text-slate-100">
-              Review: {subject.name}
-            </h1>
-            <p className="text-sm text-slate-500 mt-1">
+            <h1 style={{ fontSize: 22, fontWeight: 300, color: t.title, margin: 0 }}>Review: {subject.name}</h1>
+            <p style={{ fontSize: 13, color: t.muted, marginTop: 6, fontFamily: 'monospace' }}>
               {formatDocumentId(dsp.document_id || `DSP-${subject.id?.slice(-6) || '000'}-CP-003-APL`)} • Draft Profile
             </p>
           </div>
         </div>
-        
-        <div className="flex items-center gap-3">
+
+        <div style={{ display: 'flex', gap: 10 }}>
           {isEditing ? (
-            <Button
+            <button
               onClick={handleSaveDraft}
               disabled={updateMutation.isPending}
-              variant="outline"
-              className="border-slate-700 text-slate-300 hover:bg-slate-800"
+              style={{ ...glassBtnSecondary(t), padding: '9px 18px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 7 }}
             >
-              {updateMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+              {updateMutation.isPending ? <Loader2 style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} /> : <Save style={{ width: 14, height: 14 }} />}
               Save Draft
-            </Button>
+            </button>
           ) : (
-            <Button
+            <button
               onClick={() => setIsEditing(true)}
-              variant="outline"
-              className="border-slate-700 text-slate-300 hover:bg-slate-800"
+              style={{ ...glassBtnSecondary(t), padding: '9px 18px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 7 }}
             >
-              <Edit3 className="h-4 w-4 mr-2" />
-              Edit
-            </Button>
+              <Edit3 style={{ width: 14, height: 14 }} /> Edit
+            </button>
           )}
-          <Button
+          <button
             onClick={handleFinalize}
             disabled={updateMutation.isPending}
-            className="bg-amber-500 hover:bg-amber-600 text-slate-950 gap-2"
+            style={{ ...glassBtn(t), padding: '9px 18px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 7 }}
           >
-            <Lock className="h-4 w-4" />
-            Finalize DSP
-          </Button>
+            <Lock style={{ width: 14, height: 14 }} /> Finalize DSP
+          </button>
         </div>
       </div>
 
-      {/* Conflicts Warning */}
+      {/* Conflicts */}
       {subject.conflicts_detected?.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-6 p-4 rounded-xl bg-rose-500/10 border border-rose-500/30"
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+          style={{ marginBottom: 20, padding: 16, borderRadius: 14, background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.25)' }}
         >
-          <div className="flex items-center gap-3 mb-2">
-            <AlertTriangle className="h-5 w-5 text-rose-500" />
-            <span className="font-medium text-rose-400">Review Required: Conflicts Detected</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+            <AlertTriangle style={{ width: 16, height: 16, color: '#f43f5e' }} />
+            <span style={{ fontWeight: 600, color: '#f43f5e', fontSize: 14 }}>Review Required: Conflicts Detected</span>
           </div>
-          {subject.conflicts_detected.map((conflict, i) => (
-            <p key={i} className="text-sm text-rose-300/80 ml-8">{conflict.description}</p>
+          {subject.conflicts_detected.map((c, i) => (
+            <p key={i} style={{ fontSize: 13, color: isDark ? '#fda4af' : '#be123c', marginLeft: 26, margin: '0 0 2px 26px' }}>{c.description}</p>
           ))}
         </motion.div>
       )}
 
-      {/* DSP Content */}
-      <div className="space-y-6">
-      {/* Confidence & Classification */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="glass-panel rounded-3xl p-6">
-            <label className="text-xs uppercase tracking-wider text-slate-500 mb-2 block">
-              Confidence Score
-            </label>
-            <div className="flex items-center gap-4">
-              <span className="text-4xl font-light text-amber-500">{dsp.confidence_score}%</span>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {/* Confidence + Classification */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+          <div style={sectionCard}>
+            <label style={labelStyle}>Confidence Score</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <span style={{ fontSize: 36, fontWeight: 300, color: '#f59e0b' }}>{dsp.confidence_score}%</span>
               {isEditing && (
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={dsp.confidence_score}
+                <input type="range" min="0" max="100" value={dsp.confidence_score}
                   onChange={(e) => setDsp({ ...dsp, confidence_score: parseInt(e.target.value) })}
-                  className="flex-1 h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                  style={{ flex: 1, accentColor: '#f59e0b' }}
                 />
               )}
             </div>
           </div>
-          
-          <div className="glass-panel rounded-3xl p-6">
-            <label className="text-xs uppercase tracking-wider text-slate-500 mb-2 block">
-              Classification
-            </label>
+          <div style={sectionCard}>
+            <label style={labelStyle}>Classification</label>
             {isEditing ? (
-              <Input
-                value={dsp.classification}
-                onChange={(e) => setDsp({ ...dsp, classification: e.target.value })}
-                placeholder="e.g., High-Functioning Strategic Thinker"
-                className="bg-slate-900/50 border-slate-700 text-slate-200 text-lg font-light"
-              />
+              <input value={dsp.classification} onChange={(e) => setDsp({ ...dsp, classification: e.target.value })}
+                placeholder="e.g., High-Functioning Strategic Thinker" style={inputStyle} />
             ) : (
-              <p className="text-xl font-light text-slate-200">{dsp.classification || '—'}</p>
+              <p style={{ fontSize: 18, fontWeight: 300, color: t.title, margin: 0 }}>{dsp.classification || '—'}</p>
             )}
           </div>
         </div>
 
         {/* Executive Summary */}
-        <div className="glass-panel rounded-3xl p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <FileText className="h-4 w-4 text-amber-500" />
-            <h3 className="text-sm font-medium text-slate-200 uppercase tracking-wider">
-              Executive Summary
-            </h3>
+        <div style={sectionCard}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <FileText style={{ width: 15, height: 15, color: '#f59e0b' }} />
+            <h3 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: t.label, margin: 0 }}>Executive Summary</h3>
           </div>
           {isEditing ? (
-            <Textarea
-              value={dsp.executive_summary}
-              onChange={(e) => setDsp({ ...dsp, executive_summary: e.target.value })}
+            <textarea value={dsp.executive_summary} onChange={(e) => setDsp({ ...dsp, executive_summary: e.target.value })}
               placeholder="Comprehensive overview of the subject's psychological profile..."
-              className="min-h-[200px] bg-slate-900/50 border-slate-700 text-slate-300 leading-relaxed"
-            />
+              style={{ ...textareaStyle, minHeight: 180 }} />
           ) : (
-            <p className="text-slate-300 leading-relaxed whitespace-pre-wrap">
-              {dsp.executive_summary || 'No summary available'}
-            </p>
+            <p style={{ color: t.text, lineHeight: 1.75, whiteSpace: 'pre-wrap', margin: 0 }}>{dsp.executive_summary || 'No summary available'}</p>
           )}
         </div>
 
         {/* Personality Matrix */}
-        <div className="glass-panel rounded-3xl p-6">
-          <div className="flex items-center gap-2 mb-6">
-            <Brain className="h-4 w-4 text-violet-500" />
-            <h3 className="text-sm font-medium text-slate-200 uppercase tracking-wider">
-              Personality Matrix (Big Five)
-            </h3>
+        <div style={sectionCard}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+            <Brain style={{ width: 15, height: 15, color: '#8b5cf6' }} />
+            <h3 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: t.label, margin: 0 }}>Personality Matrix (Big Five)</h3>
           </div>
-          <PersonalityMatrix
-            data={dsp.personality_matrix}
-            onChange={(data) => setDsp({ ...dsp, personality_matrix: data })}
-            editable={isEditing}
-          />
+          <PersonalityMatrix data={dsp.personality_matrix} onChange={(data) => setDsp({ ...dsp, personality_matrix: data })} editable={isEditing} />
         </div>
 
-        {/* Action/Response Matrix */}
-        <div className="glass-panel rounded-3xl p-6">
-          <div className="flex items-center gap-2 mb-6">
-            <GitBranch className="h-4 w-4 text-emerald-500" />
-            <h3 className="text-sm font-medium text-slate-200 uppercase tracking-wider">
-              Predictive Model (Action/Response Matrix)
-            </h3>
+        {/* Predictive Model */}
+        <div style={sectionCard}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+            <GitBranch style={{ width: 15, height: 15, color: '#10b981' }} />
+            <h3 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: t.label, margin: 0 }}>Predictive Model (Action/Response Matrix)</h3>
           </div>
-          <ActionResponseMatrix
-            data={dsp.action_response_matrix}
-            onChange={(data) => setDsp({ ...dsp, action_response_matrix: data })}
-            editable={isEditing}
-          />
+          <ActionResponseMatrix data={dsp.action_response_matrix} onChange={(data) => setDsp({ ...dsp, action_response_matrix: data })} editable={isEditing} />
         </div>
 
         {/* Cognitive Architecture */}
-        <div className="glass-panel rounded-3xl p-6">
-          <div className="flex items-center gap-2 mb-6">
-            <Brain className="h-4 w-4 text-violet-500" />
-            <h3 className="text-sm font-medium text-slate-200 uppercase tracking-wider">
-              Cognitive Architecture
-            </h3>
+        <div style={sectionCard}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+            <Brain style={{ width: 15, height: 15, color: '#8b5cf6' }} />
+            <h3 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: t.label, margin: 0 }}>Cognitive Architecture</h3>
           </div>
-          <div className="space-y-4">
-            <div>
-              <label className="text-xs uppercase tracking-wider text-slate-500 mb-2 block">
-                Thinking Style
-              </label>
-              {isEditing ? (
-                <Textarea
-                  value={dsp.cognitive_architecture?.thinking_style || ''}
-                  onChange={(e) => setDsp({ ...dsp, cognitive_architecture: { ...dsp.cognitive_architecture, thinking_style: e.target.value } })}
-                  placeholder="How the subject processes information and makes decisions..."
-                  className="min-h-[80px] bg-slate-900/50 border-slate-700 text-slate-300"
-                />
-              ) : (
-                <p className="text-slate-300 leading-relaxed">{dsp.cognitive_architecture?.thinking_style || 'Not analyzed'}</p>
-              )}
-            </div>
-            <div>
-              <label className="text-xs uppercase tracking-wider text-slate-500 mb-2 block">
-                Epistemic Requirements
-              </label>
-              {isEditing ? (
-                <Textarea
-                  value={dsp.cognitive_architecture?.epistemic_requirements || ''}
-                  onChange={(e) => setDsp({ ...dsp, cognitive_architecture: { ...dsp.cognitive_architecture, epistemic_requirements: e.target.value } })}
-                  placeholder="What the subject needs to know or understand..."
-                  className="min-h-[80px] bg-slate-900/50 border-slate-700 text-slate-300"
-                />
-              ) : (
-                <p className="text-slate-300 leading-relaxed">{dsp.cognitive_architecture?.epistemic_requirements || 'Not analyzed'}</p>
-              )}
-            </div>
-            <div>
-              <label className="text-xs uppercase tracking-wider text-slate-500 mb-2 block">
-                Defense Mechanisms
-              </label>
-              {isEditing ? (
-                <Textarea
-                  value={dsp.cognitive_architecture?.defense_mechanisms || ''}
-                  onChange={(e) => setDsp({ ...dsp, cognitive_architecture: { ...dsp.cognitive_architecture, defense_mechanisms: e.target.value } })}
-                  placeholder="Identified defense mechanisms (e.g., DARVO, Splitting)..."
-                  className="min-h-[80px] bg-slate-900/50 border-slate-700 text-slate-300"
-                />
-              ) : (
-                <p className="text-slate-300 leading-relaxed">{dsp.cognitive_architecture?.defense_mechanisms || 'Not analyzed'}</p>
-              )}
-            </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {[['thinking_style', 'Thinking Style', 'How the subject processes information...'], ['epistemic_requirements', 'Epistemic Requirements', 'What the subject needs to know...'], ['defense_mechanisms', 'Defense Mechanisms', 'Identified mechanisms (e.g., DARVO, Splitting)...']].map(([key, label, placeholder]) => (
+              <div key={key}>
+                <label style={labelStyle}>{label}</label>
+                {isEditing ? (
+                  <textarea value={dsp.cognitive_architecture?.[key] || ''}
+                    onChange={(e) => setDsp({ ...dsp, cognitive_architecture: { ...dsp.cognitive_architecture, [key]: e.target.value } })}
+                    placeholder={placeholder} style={{ ...textareaStyle, minHeight: 80 }} />
+                ) : (
+                  <p style={{ color: t.text, lineHeight: 1.7, margin: 0 }}>{dsp.cognitive_architecture?.[key] || 'Not analyzed'}</p>
+                )}
+              </div>
+            ))}
           </div>
         </div>
 
         {/* Behavioral Patterns */}
-        <div className="glass-panel rounded-3xl p-6">
-          <div className="flex items-center gap-2 mb-6">
-            <GitBranch className="h-4 w-4 text-emerald-500" />
-            <h3 className="text-sm font-medium text-slate-200 uppercase tracking-wider">
-              Behavioral Patterns
-            </h3>
+        <div style={sectionCard}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+            <GitBranch style={{ width: 15, height: 15, color: '#10b981' }} />
+            <h3 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: t.label, margin: 0 }}>Behavioral Patterns</h3>
           </div>
-          <div className="space-y-4">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {dsp.behavioral_patterns?.map((pattern, index) => (
-              <div key={index} className="p-4 bg-slate-900/50 rounded-xl border border-slate-800">
-                <div className="mb-2">
-                  <label className="text-xs uppercase tracking-wider text-amber-500 mb-1 block">
-                    Pattern Label
-                  </label>
-                  {isEditing ? (
-                    <Input
-                      value={pattern.label || ''}
-                      onChange={(e) => {
-                        const updated = [...dsp.behavioral_patterns];
-                        updated[index] = { ...pattern, label: e.target.value };
-                        setDsp({ ...dsp, behavioral_patterns: updated });
-                      }}
-                      placeholder="e.g., Crisis Manufacturing"
-                      className="bg-slate-800/50 border-slate-700 text-slate-200"
-                    />
-                  ) : (
-                    <p className="text-slate-200 font-medium">{pattern.label}</p>
-                  )}
-                </div>
-                <div className="mb-2">
-                  <label className="text-xs uppercase tracking-wider text-slate-500 mb-1 block">
-                    Description
-                  </label>
-                  {isEditing ? (
-                    <Textarea
-                      value={pattern.description || ''}
-                      onChange={(e) => {
-                        const updated = [...dsp.behavioral_patterns];
-                        updated[index] = { ...pattern, description: e.target.value };
-                        setDsp({ ...dsp, behavioral_patterns: updated });
-                      }}
-                      placeholder="Describe the pattern..."
-                      className="min-h-[60px] bg-slate-800/50 border-slate-700 text-slate-300"
-                    />
-                  ) : (
-                    <p className="text-slate-300">{pattern.description}</p>
-                  )}
-                </div>
-                <div>
-                  <label className="text-xs uppercase tracking-wider text-slate-500 mb-1 block">
-                    Context / Frequency
-                  </label>
-                  {isEditing ? (
-                    <Input
-                      value={pattern.context || ''}
-                      onChange={(e) => {
-                        const updated = [...dsp.behavioral_patterns];
-                        updated[index] = { ...pattern, context: e.target.value };
-                        setDsp({ ...dsp, behavioral_patterns: updated });
-                      }}
-                      placeholder="When/how often this occurs..."
-                      className="bg-slate-800/50 border-slate-700 text-slate-300"
-                    />
-                  ) : (
-                    <p className="text-slate-400 text-sm">{pattern.context}</p>
-                  )}
-                </div>
+              <div key={index} style={{ padding: 16, borderRadius: 12, background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'}` }}>
+                {[['label', 'Pattern Label', false], ['description', 'Description', true], ['context', 'Context / Frequency', false]].map(([field, lbl, isArea]) => (
+                  <div key={field} style={{ marginBottom: field !== 'context' ? 10 : 0 }}>
+                    <label style={labelStyle}>{lbl}</label>
+                    {isEditing ? (
+                      isArea ? (
+                        <textarea value={pattern[field] || ''} onChange={(e) => { const updated = [...dsp.behavioral_patterns]; updated[index] = { ...pattern, [field]: e.target.value }; setDsp({ ...dsp, behavioral_patterns: updated }); }}
+                          style={{ ...textareaStyle, minHeight: 60 }} />
+                      ) : (
+                        <input value={pattern[field] || ''} onChange={(e) => { const updated = [...dsp.behavioral_patterns]; updated[index] = { ...pattern, [field]: e.target.value }; setDsp({ ...dsp, behavioral_patterns: updated }); }}
+                          style={inputStyle} />
+                      )
+                    ) : (
+                      <p style={{ color: field === 'label' ? t.accent : field === 'context' ? t.muted : t.text, fontSize: field === 'context' ? 12 : 14, margin: 0 }}>{pattern[field]}</p>
+                    )}
+                  </div>
+                ))}
               </div>
             ))}
             {isEditing && (
-              <Button
-                variant="outline"
-                size="sm"
+              <button
                 onClick={() => setDsp({ ...dsp, behavioral_patterns: [...(dsp.behavioral_patterns || []), { label: '', description: '', context: '' }] })}
-                className="w-full border-slate-700 text-slate-400 hover:bg-slate-800"
+                style={{ ...glassBtnSecondary(t), padding: '9px 16px', fontSize: 13, width: '100%', justifyContent: 'center' }}
               >
                 Add Pattern
-              </Button>
+              </button>
             )}
             {!isEditing && (!dsp.behavioral_patterns || dsp.behavioral_patterns.length === 0) && (
-              <p className="text-sm text-slate-500 text-center py-4">No patterns documented</p>
+              <p style={{ fontSize: 13, color: t.muted, textAlign: 'center', padding: '16px 0' }}>No patterns documented</p>
             )}
           </div>
         </div>
 
         {/* Motivations & Fears */}
-        <div className="glass-panel rounded-3xl p-6">
-          <h3 className="text-sm font-medium text-slate-200 uppercase tracking-wider mb-6">
-            Core Drivers
-          </h3>
+        <div style={sectionCard}>
+          <h3 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: t.label, margin: '0 0 20px' }}>Core Drivers</h3>
           <MotivationsSection
-            motivations={dsp.motivations}
-            fears={dsp.fears}
+            motivations={dsp.motivations} fears={dsp.fears}
             onMotivationsChange={(data) => setDsp({ ...dsp, motivations: data })}
             onFearsChange={(data) => setDsp({ ...dsp, fears: data })}
             editable={isEditing}
           />
         </div>
 
-        {/* Additional Evidence Upload */}
+        {/* Additional Evidence */}
         {isEditing && (
-          <div className="glass-panel rounded-3xl p-6">
-            <h3 className="text-sm font-medium text-slate-200 uppercase tracking-wider mb-6">
-              Additional Evidence
-            </h3>
-            <div className="space-y-4">
-              <DataStreamUploader
-                streamKey="stream_a_text"
-                files={subject.stream_a_text || []}
-                onFilesChange={(files) => handleStreamFilesChange('stream_a_text', files)}
-              />
-              <DataStreamUploader
-                streamKey="stream_b_audio"
-                files={subject.stream_b_audio || []}
-                onFilesChange={(files) => handleStreamFilesChange('stream_b_audio', files)}
-              />
-              <DataStreamUploader
-                streamKey="stream_c_video"
-                files={subject.stream_c_video || []}
-                onFilesChange={(files) => handleStreamFilesChange('stream_c_video', files)}
-              />
-              <DataStreamUploader
-                streamKey="stream_d_behavioral"
-                files={subject.stream_d_behavioral || []}
-                onFilesChange={(files) => handleStreamFilesChange('stream_d_behavioral', files)}
-              />
-              <DataStreamUploader
-                streamKey="stream_e_analog"
-                files={subject.stream_e_analog || []}
-                onFilesChange={(files) => handleStreamFilesChange('stream_e_analog', files)}
-              />
+          <div style={sectionCard}>
+            <h3 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: t.label, margin: '0 0 20px' }}>Additional Evidence</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {['stream_a_text', 'stream_b_audio', 'stream_c_video', 'stream_d_behavioral', 'stream_e_analog'].map(streamKey => (
+                <DataStreamUploader key={streamKey} streamKey={streamKey} files={subject[streamKey] || []}
+                  onFilesChange={(files) => handleStreamFilesChange(streamKey, files)} />
+              ))}
             </div>
           </div>
         )}
