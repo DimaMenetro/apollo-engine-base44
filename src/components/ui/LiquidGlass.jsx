@@ -93,9 +93,16 @@ export const dark = {
   orb2:            'radial-gradient(circle, rgba(139,92,246,0.22) 0%, transparent 70%)',
   orb3:            'radial-gradient(circle, rgba(6,182,212,0.18) 0%, transparent 70%)',
 
+  // Card: tight Liquid Glass — like the Apple Music bottom accessory in dark mode.
+  // Very low fill, the specular top rim + ambient glow below does the work.
   card:            'rgba(255,255,255,0.055)',
-  cardBorder:      'rgba(255,255,255,0.08)',
-  cardShadow:      'inset 0 1px 0 0 rgba(255,255,255,0.09), inset 0 -1px 0 0 rgba(0,0,0,0.35), 0 8px 32px rgba(0,0,0,0.30), 0 1px 3px rgba(0,0,0,0.20)',
+  cardBorder:      'rgba(255,255,255,0.09)',
+  cardShadow:      [
+    'inset 0 1px 0 0 rgba(255,255,255,0.10)',  // top specular
+    'inset 0 -1px 0 0 rgba(0,0,0,0.40)',        // bottom inner dark edge
+    '0 8px 32px rgba(0,0,0,0.32)',              // ambient drop
+    '0 1px 3px rgba(0,0,0,0.22)',               // micro crisp
+  ].join(', '),
 
   surface:         'rgba(255,255,255,0.045)',
   surfaceBorder:   'rgba(255,255,255,0.07)',
