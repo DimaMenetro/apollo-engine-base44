@@ -283,6 +283,7 @@ export default function Processing() {
     });
 
     setIsProcessing(false);
+    finishProcessing(subjectId);
   };
 
   const getAnalysisPrompt = (moduleKey, subjectName) => {
