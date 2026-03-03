@@ -75,6 +75,8 @@ export default function Processing() {
   const urlParams = new URLSearchParams(window.location.search);
   const subjectId = urlParams.get('id');
 
+  const { startProcessing, updateProgress, finishProcessing, failProcessing } = useAccessory();
+
   const [moduleStatuses, setModuleStatuses] = useState({});
   const [analysisResults, setAnalysisResults] = useState({});
   const [conflicts, setConflicts] = useState([]);
