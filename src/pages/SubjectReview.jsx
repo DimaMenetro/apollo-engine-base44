@@ -50,7 +50,7 @@ export default function SubjectReview() {
     if (!subject?.analysis_results) return;
     const analysisContext = JSON.stringify(subject.analysis_results);
     const response = await base44.integrations.Core.InvokeLLM({
-      prompt: `Based on the following analysis results for subject "${subject.name}", generate a comprehensive psychological profile draft:\n\nAnalysis Results:\n${analysisContext}\n\nGenerate: executive summary, classification, Big Five personality scores, cognitive architecture, behavioral patterns, behavioral predictions, motivations, fears, confidence score.`,
+      prompt: `Based on the following analysis results for subject "${subject.name}", generate a comprehensive psychological profile draft:\n\nAnalysis Results:\n${analysisContext}\n\nGenerate: executive summary, classification, Big Five personality scores, cognitive architecture, behavioral patterns, behavioral predictions, motivations, fears, confidence score.\n\nCRITICAL: All scores, probabilities, and confidence values MUST be integers on a 0–100 scale (e.g., 75 not 0.75). Do NOT use decimal/fractional values.`,
       response_json_schema: {
         type: "object",
         properties: {
