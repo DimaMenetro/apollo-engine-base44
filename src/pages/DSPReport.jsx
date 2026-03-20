@@ -171,6 +171,11 @@ export default function DSPReport() {
                 <p style={{ fontSize: 32, fontWeight: 300, color: conf.color, margin: 0 }}>
                   {dsp.confidence_score || 0}%
                 </p>
+                {dsp.confidence_justification && (
+                  <p style={{ fontSize: 11, color: conf.color, opacity: 0.75, marginTop: 8, lineHeight: 1.5, textAlign: 'left', maxWidth: 200 }}>
+                    {dsp.confidence_justification}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -211,6 +216,16 @@ export default function DSPReport() {
                   <p style={{ color: t.text, lineHeight: 1.7, margin: 0 }}>{value}</p>
                 </div>
               ))}
+              {dsp.cognitive_architecture?.sub_sections?.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 18, marginTop: 4 }}>
+                  {dsp.cognitive_architecture.sub_sections.map((section, i) => (
+                    <div key={i}>
+                      <h4 style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.12em', color: t.label, marginBottom: 6 }}>{section.title}</h4>
+                      <p style={{ color: t.text, lineHeight: 1.7, margin: 0 }}>{section.content}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </Section>
         )}
@@ -289,6 +304,13 @@ export default function DSPReport() {
               ))}
             </div>
           </div>
+        )}
+
+        {/* Final Assessment */}
+        {dsp.final_assessment && (
+          <Section t={t} isDark={isDark} icon={<CheckCircle2 style={{ width: 15, height: 15, color: '#f59e0b' }} />} title="Final Assessment">
+            <p style={{ color: t.text, lineHeight: 1.8, whiteSpace: 'pre-wrap', margin: 0 }}>{dsp.final_assessment}</p>
+          </Section>
         )}
 
         {/* Footer */}

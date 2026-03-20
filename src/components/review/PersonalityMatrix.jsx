@@ -67,11 +67,25 @@ export default function PersonalityMatrix({ data, onChange, editable = false }) 
                   onChange={(e) => handleChange(trait.key, 'evidence', e.target.value)}
                   style={textareaStyle} />
               </div>
-            ) : getEvidence(trait.key) ? (
-              <p style={{ fontSize: 12, color: t.muted, fontStyle: 'italic', margin: 0 }}>
-                "{getEvidence(trait.key)}"
-              </p>
-            ) : null}
+            ) : (
+              <>
+                {getEvidence(trait.key) && (
+                  <p style={{ fontSize: 12, color: t.muted, fontStyle: 'italic', margin: '0 0 8px' }}>
+                    "{getEvidence(trait.key)}"
+                  </p>
+                )}
+                {data?.[trait.key]?.indicators?.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    {data[trait.key].indicators.map((indicator, i) => (
+                      <div key={i} style={{ display: 'flex', gap: 7, alignItems: 'flex-start' }}>
+                        <span style={{ color: barColor, fontSize: 11, marginTop: 2, flexShrink: 0 }}>•</span>
+                        <span style={{ fontSize: 12, color: t.muted, lineHeight: 1.5 }}>{indicator}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         );
       })}

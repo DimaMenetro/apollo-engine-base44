@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import { useTheme } from '../components/theme/ThemeProvider';
 import { light, dark, glassCard, glassBtn, glassBtnSecondary } from '../components/ui/LiquidGlass';
-import { ArrowLeft, Lock, Loader2, FileText, Brain, GitBranch, AlertTriangle, Edit3, Save, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Lock, Loader2, FileText, Brain, GitBranch, AlertTriangle, Edit3, Save, CheckCircle2, RefreshCw } from 'lucide-react';
 import PersonalityMatrix from '../components/review/PersonalityMatrix';
 import ActionResponseMatrix from '../components/review/ActionResponseMatrix';
 import MotivationsSection from '../components/review/MotivationsSection';
@@ -23,11 +23,13 @@ export default function SubjectReview() {
   const subjectId = urlParams.get('id');
 
   const [isEditing, setIsEditing] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [dsp, setDsp] = useState({
     document_id: '', protocol_version: 'CP-003-O-D-APL v2.1', date_of_synthesis: '',
     confidence_score: 75, executive_summary: '', classification: '',
-    personality_matrix: {}, cognitive_architecture: { thinking_style: '', epistemic_requirements: '', defense_mechanisms: '' },
+    personality_matrix: {}, cognitive_architecture: { thinking_style: '', epistemic_requirements: '', defense_mechanisms: '', sub_sections: [] },
     behavioral_patterns: [], cognitive_map: {}, action_response_matrix: [], motivations: [], fears: [],
+    final_assessment: '', confidence_justification: '',
   });
 
   const { data: subjectData, isLoading } = useQuery({
@@ -39,7 +41,19 @@ export default function SubjectReview() {
   const subject = subjectData?.[0];
 
   useEffect(() => {
-    if (subject?.dsp) setDsp(prev => ({ ...prev, ...subject.dsp }));
+    if (subject?.dsp) {
+      const loaded = subject.dsp;
+      setDsp(prev => ({
+        ...prev,
+        ...loaded,
+        cognitive_architecture: {
+          thinking_style: '', epistemic_requirements: '', defense_mechanisms: '', sub_sections: [],
+          ...loaded.cognitive_architecture,
+        },
+        final_assessment: loaded.final_assessment || '',
+        confidence_justification: loaded.confidence_justification || '',
+      }));
+    }
   }, [subject]);
 
   useEffect(() => {
@@ -48,39 +62,149 @@ export default function SubjectReview() {
 
   const generateDraftDSP = async () => {
     if (!subject?.analysis_results) return;
-    const analysisContext = JSON.stringify(subject.analysis_results);
-    const response = await base44.integrations.Core.InvokeLLM({
-      prompt: `Based on the following analysis results for subject "${subject.name}", generate a comprehensive psychological profile draft:\n\nAnalysis Results:\n${analysisContext}\n\nGenerate: executive summary, classification, Big Five personality scores, cognitive architecture, behavioral patterns, behavioral predictions, motivations, fears, confidence score.\n\nCRITICAL: All scores, probabilities, and confidence values MUST be integers on a 0–100 scale (e.g., 75 not 0.75). Do NOT use decimal/fractional values.`,
-      response_json_schema: {
+    setIsGenerating(true);
+    try {
+      const analysisContext = JSON.stringify(subject.analysis_results);
+      const traitSchema = {
         type: "object",
         properties: {
-          executive_summary: { type: "string" }, classification: { type: "string" }, confidence_score: { type: "number" },
-          personality_matrix: { type: "object", properties: { openness: { type: "object" }, conscientiousness: { type: "object" }, extraversion: { type: "object" }, agreeableness: { type: "object" }, neuroticism: { type: "object" } } },
-          cognitive_architecture: { type: "object", properties: { thinking_style: { type: "string" }, epistemic_requirements: { type: "string" }, defense_mechanisms: { type: "string" } } },
-          behavioral_patterns: { type: "array", items: { type: "object", properties: { label: { type: "string" }, description: { type: "string" }, context: { type: "string" } } } },
-          predictions: { type: "array", items: { type: "object", properties: { trigger: { type: "string" }, context: { type: "string" }, predicted_behavior: { type: "string" }, probability: { type: "number" }, confidence_interval: { type: "object", properties: { lower: { type: "number" }, upper: { type: "number" } } }, temporal_factors: { type: "string" } } } },
-          motivations: { type: "array", items: { type: "string" } },
-          fears: { type: "array", items: { type: "string" } }
+          score: { type: "number" },
+          label: { type: "string" },
+          evidence: { type: "string" },
+          indicators: { type: "array", items: { type: "string" } }
         }
-      }
-    });
+      };
+      const response = await base44.integrations.Core.InvokeLLM({
+        model: "claude_sonnet_4_6",
+        prompt: `You are executing the Apollo Protocol (CP-003-O-D-APL v2.1) to generate a Definitive Subject Profile (DSP) for subject "${subject.name}".
 
-    const today = new Date().toISOString().split('T')[0];
-    setDsp({
-      document_id: `DSP-${subject.id?.slice(-6) || '000'}-CP-003-APL`,
-      protocol_version: 'CP-003-O-D-APL v2.1',
-      date_of_synthesis: today,
-      confidence_score: response.confidence_score || 75,
-      executive_summary: response.executive_summary || '',
-      classification: response.classification || '',
-      personality_matrix: response.personality_matrix || {},
-      cognitive_architecture: response.cognitive_architecture || { thinking_style: '', epistemic_requirements: '', defense_mechanisms: '' },
-      behavioral_patterns: response.behavioral_patterns || [],
-      cognitive_map: {},
-      action_response_matrix: response.predictions || [],
-      motivations: response.motivations || [],
-      fears: response.fears || [],
-    });
+Multi-stream analysis data:
+${analysisContext}
+
+Generate a comprehensive, high-depth psychological profile. Be thorough, specific, and analytical — ground every claim in the evidence. Avoid generic observations.
+
+SECTIONS TO GENERATE:
+
+EXECUTIVE SUMMARY: 3-5 paragraphs synthesizing the subject's core psychological architecture, defining behavioral patterns, and central tensions. Open with the most defining characteristic.
+
+CLASSIFICATION: A concise 5-10 word label for the subject's psychological type (e.g. "High-Functioning Strategic Thinker with Epistemic Drive").
+
+PERSONALITY MATRIX (Big Five) — for each trait (openness, conscientiousness, extraversion, agreeableness, neuroticism):
+- score: integer 0-100
+- label: qualitative label (e.g. "Extremely High", "Moderate / Selectively Expressed", "Low")
+- evidence: 2-3 sentence analytical paragraph grounded in the data
+- indicators: array of 4-6 specific observed behavioral/cognitive indicators as strings
+
+COGNITIVE ARCHITECTURE:
+- thinking_style: 2-3 sentences on overall cognitive approach
+- epistemic_requirements: 2-3 sentences on what the subject requires to know and why
+- defense_mechanisms: 2-3 sentences on specific psychological defense patterns with named mechanisms
+- sub_sections: array of 4-6 named cognitive dimensions, each with a title and 2-4 sentence content paragraph. Use evidence-appropriate titles such as: "Systems-Oriented Intelligence", "Predictive Pattern Modeling", "Formalization Instinct", "Recursive Self-Audit", "Temporal Perception", "Epistemic Defense Architecture"
+
+BEHAVIORAL PATTERNS: 4-6 named patterns. Each with label, 2-3 sentence description, context/frequency note.
+
+PREDICTIONS: 4-6 behavioral scenarios. Each with trigger, context, predicted_behavior, probability (integer 0-100), confidence_interval ({lower, upper} as integers), temporal_factors.
+
+MOTIVATIONS: 5-7 specific core motivations as strings.
+FEARS: 4-6 specific core fears as strings.
+
+FINAL ASSESSMENT: 4-6 paragraphs integrating all findings into a definitive psychological portrait. Should function as a standalone clinical summary. Conclude with a single defining sentence about the subject's core nature.
+
+CONFIDENCE SCORE: Integer 0-100.
+CONFIDENCE JUSTIFICATION: 2-3 sentences explaining the confidence level, referencing which data streams contributed most.
+
+CRITICAL: ALL scores and probabilities MUST be integers on a 0-100 scale. No decimals.`,
+        response_json_schema: {
+          type: "object",
+          properties: {
+            executive_summary: { type: "string" },
+            classification: { type: "string" },
+            confidence_score: { type: "number" },
+            confidence_justification: { type: "string" },
+            personality_matrix: {
+              type: "object",
+              properties: {
+                openness: traitSchema,
+                conscientiousness: traitSchema,
+                extraversion: traitSchema,
+                agreeableness: traitSchema,
+                neuroticism: traitSchema,
+              }
+            },
+            cognitive_architecture: {
+              type: "object",
+              properties: {
+                thinking_style: { type: "string" },
+                epistemic_requirements: { type: "string" },
+                defense_mechanisms: { type: "string" },
+                sub_sections: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      title: { type: "string" },
+                      content: { type: "string" }
+                    }
+                  }
+                }
+              }
+            },
+            behavioral_patterns: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  label: { type: "string" },
+                  description: { type: "string" },
+                  context: { type: "string" }
+                }
+              }
+            },
+            predictions: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  trigger: { type: "string" },
+                  context: { type: "string" },
+                  predicted_behavior: { type: "string" },
+                  probability: { type: "number" },
+                  confidence_interval: {
+                    type: "object",
+                    properties: { lower: { type: "number" }, upper: { type: "number" } }
+                  },
+                  temporal_factors: { type: "string" }
+                }
+              }
+            },
+            motivations: { type: "array", items: { type: "string" } },
+            fears: { type: "array", items: { type: "string" } },
+            final_assessment: { type: "string" },
+          }
+        }
+      });
+
+      const today = new Date().toISOString().split('T')[0];
+      setDsp({
+        document_id: `DSP-${subject.id?.slice(-6) || '000'}-CP-003-APL`,
+        protocol_version: 'CP-003-O-D-APL v2.1',
+        date_of_synthesis: today,
+        confidence_score: response.confidence_score || 75,
+        confidence_justification: response.confidence_justification || '',
+        executive_summary: response.executive_summary || '',
+        classification: response.classification || '',
+        personality_matrix: response.personality_matrix || {},
+        cognitive_architecture: response.cognitive_architecture || { thinking_style: '', epistemic_requirements: '', defense_mechanisms: '', sub_sections: [] },
+        behavioral_patterns: response.behavioral_patterns || [],
+        cognitive_map: {},
+        action_response_matrix: response.predictions || [],
+        motivations: response.motivations || [],
+        fears: response.fears || [],
+        final_assessment: response.final_assessment || '',
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const updateMutation = useMutation({
@@ -158,6 +282,14 @@ export default function SubjectReview() {
         </div>
 
         <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            onClick={generateDraftDSP}
+            disabled={isGenerating || !subject?.analysis_results}
+            style={{ ...glassBtnSecondary(t), padding: '9px 18px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 7, opacity: !subject?.analysis_results ? 0.4 : 1 }}
+          >
+            {isGenerating ? <Loader2 style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} /> : <RefreshCw style={{ width: 14, height: 14 }} />}
+            Regenerate
+          </button>
           {isEditing ? (
             <button
               onClick={handleSaveDraft}
@@ -214,6 +346,13 @@ export default function SubjectReview() {
                 />
               )}
             </div>
+            {isEditing ? (
+              <textarea value={dsp.confidence_justification || ''} onChange={(e) => setDsp({ ...dsp, confidence_justification: e.target.value })}
+                placeholder="Why is confidence at this level? (data sources used, convergence quality...)"
+                style={{ ...textareaStyle, minHeight: 56, marginTop: 10 }} />
+            ) : dsp.confidence_justification ? (
+              <p style={{ fontSize: 12, color: t.muted, marginTop: 10, lineHeight: 1.6 }}>{dsp.confidence_justification}</p>
+            ) : null}
           </div>
           <div style={sectionCard}>
             <label style={labelStyle}>Classification</label>
@@ -278,6 +417,23 @@ export default function SubjectReview() {
                 )}
               </div>
             ))}
+            {/* Cognitive sub-sections */}
+            {dsp.cognitive_architecture?.sub_sections?.map((section, idx) => (
+              <div key={idx}>
+                <label style={labelStyle}>{section.title}</label>
+                {isEditing ? (
+                  <textarea value={section.content || ''}
+                    onChange={(e) => {
+                      const updated = [...(dsp.cognitive_architecture.sub_sections || [])];
+                      updated[idx] = { ...section, content: e.target.value };
+                      setDsp({ ...dsp, cognitive_architecture: { ...dsp.cognitive_architecture, sub_sections: updated } });
+                    }}
+                    style={{ ...textareaStyle, minHeight: 80 }} />
+                ) : (
+                  <p style={{ color: t.text, lineHeight: 1.7, margin: 0 }}>{section.content}</p>
+                )}
+              </div>
+            ))}
           </div>
         </div>
 
@@ -331,6 +487,21 @@ export default function SubjectReview() {
             onFearsChange={(data) => setDsp({ ...dsp, fears: data })}
             editable={isEditing}
           />
+        </div>
+
+        {/* Final Assessment */}
+        <div style={sectionCard}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <CheckCircle2 style={{ width: 15, height: 15, color: '#f59e0b' }} />
+            <h3 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: t.label, margin: 0 }}>Final Assessment</h3>
+          </div>
+          {isEditing ? (
+            <textarea value={dsp.final_assessment || ''} onChange={(e) => setDsp({ ...dsp, final_assessment: e.target.value })}
+              placeholder="Definitive synthesis narrative — integrates all findings into a coherent psychological portrait..."
+              style={{ ...textareaStyle, minHeight: 220 }} />
+          ) : (
+            <p style={{ color: t.text, lineHeight: 1.8, whiteSpace: 'pre-wrap', margin: 0 }}>{dsp.final_assessment || 'No final assessment generated'}</p>
+          )}
         </div>
 
         {/* Additional Evidence */}
