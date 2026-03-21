@@ -15,7 +15,8 @@ import {
   Shield,
   Download,
   Lock,
-  CheckCircle2
+  CheckCircle2,
+  RefreshCw
 } from 'lucide-react';
 import PersonalityMatrix from '../components/review/PersonalityMatrix';
 import ActionResponseMatrix from '../components/review/ActionResponseMatrix';
@@ -94,13 +95,22 @@ export default function DSPReport() {
           </div>
         </div>
         
-        <button
-          onClick={() => window.print()}
-          style={{ ...glassBtnSecondary(t), padding: '9px 20px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}
-        >
-          <Download style={{ width: 15, height: 15 }} />
-          Export
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            onClick={() => navigate(createPageUrl(`SubjectReview?id=${subjectId}`))}
+            style={{ ...glassBtnSecondary(t), padding: '9px 20px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}
+          >
+            <RefreshCw style={{ width: 15, height: 15 }} />
+            Regenerate
+          </button>
+          <button
+            onClick={() => window.print()}
+            style={{ ...glassBtnSecondary(t), padding: '9px 20px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}
+          >
+            <Download style={{ width: 15, height: 15 }} />
+            Export
+          </button>
+        </div>
       </div>
 
       {/* Report Content */}
