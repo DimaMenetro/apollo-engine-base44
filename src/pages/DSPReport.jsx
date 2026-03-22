@@ -16,8 +16,10 @@ import {
   Download,
   Lock,
   CheckCircle2,
-  RefreshCw
+  RefreshCw,
+  Star
 } from 'lucide-react';
+import EsotericOutputDisplay from '../components/esoteric/EsotericOutputDisplay';
 import PersonalityMatrix from '../components/review/PersonalityMatrix';
 import ActionResponseMatrix from '../components/review/ActionResponseMatrix';
 import { format } from 'date-fns';

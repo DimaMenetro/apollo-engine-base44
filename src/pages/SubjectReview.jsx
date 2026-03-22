@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import { useTheme } from '../components/theme/ThemeProvider';
 import { light, dark, glassCard, glassBtn, glassBtnSecondary } from '../components/ui/LiquidGlass';
-import { ArrowLeft, Lock, Loader2, FileText, Brain, GitBranch, AlertTriangle, Edit3, Save, CheckCircle2, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Lock, Loader2, FileText, Brain, GitBranch, AlertTriangle, Edit3, Save, CheckCircle2, RefreshCw, Star } from 'lucide-react';
 import PersonalityMatrix from '../components/review/PersonalityMatrix';
 import ActionResponseMatrix from '../components/review/ActionResponseMatrix';
 import MotivationsSection from '../components/review/MotivationsSection';
