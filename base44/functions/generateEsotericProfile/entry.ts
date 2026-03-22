@@ -128,13 +128,7 @@ SME VALIDATION: Assess each criterion honestly.`,
       }
     });
 
-    // Run both calls in parallel with a 150s timeout guard
-    const timeout = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('CP-012 execution timed out. Please retry.')), 150000)
-    );
-    const [raw1, raw2] = await Promise.race([Promise.all([call1, call2]), timeout.then(() => { throw new Error('timeout'); })])
-      .catch(() => Promise.all([call1, call2]));
-
+    // Run both calls in parallel
     const [raw1, raw2] = await Promise.all([call1, call2]);
 
     // asServiceRole.integrations wraps the schema result in a `response` key
