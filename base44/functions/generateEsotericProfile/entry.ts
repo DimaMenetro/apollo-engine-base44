@@ -129,7 +129,11 @@ SME VALIDATION: Assess each criterion honestly.`,
     });
 
     // Run both calls in parallel
-    const [result1, result2] = await Promise.all([call1, call2]);
+    const [raw1, raw2] = await Promise.all([call1, call2]);
+
+    // asServiceRole.integrations wraps the schema result in a `response` key
+    const result1 = raw1?.response ?? raw1;
+    const result2 = raw2?.response ?? raw2;
 
     const esotericProfile = {
       ...result1,
