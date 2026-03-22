@@ -283,6 +283,13 @@ CRITICAL: ALL scores and probabilities MUST be integers on a 0-100 scale. No dec
 
         <div style={{ display: 'flex', gap: 10 }}>
           <button
+            onClick={() => navigate(createPageUrl(`EsotericProfile?id=${subjectId}`))}
+            style={{ ...glassBtnSecondary(t), padding: '9px 18px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 7 }}
+          >
+            <Star style={{ width: 14, height: 14, color: '#8b5cf6' }} />
+            Esoteric
+          </button>
+          <button
             onClick={generateDraftDSP}
             disabled={isGenerating || !subject?.analysis_results}
             style={{ ...glassBtnSecondary(t), padding: '9px 18px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 7, opacity: !subject?.analysis_results ? 0.4 : 1 }}
