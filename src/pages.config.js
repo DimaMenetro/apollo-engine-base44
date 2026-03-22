@@ -53,6 +53,7 @@ import Processing from './pages/Processing';
 import Reports from './pages/Reports';
 import SubjectIntake from './pages/SubjectIntake';
 import SubjectReview from './pages/SubjectReview';
+import EsotericProfile from './pages/EsotericProfile';
 import __Layout from './Layout.jsx';
 
 
@@ -63,6 +64,7 @@ export const PAGES = {
     "Reports": Reports,
     "SubjectIntake": SubjectIntake,
     "SubjectReview": SubjectReview,
+    "EsotericProfile": EsotericProfile,
 }
 
 export const pagesConfig = {
