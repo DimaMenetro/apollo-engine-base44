@@ -49,30 +49,25 @@ Mode: ${executionMode}${timeframe ? `\nTimeframe: ${timeframe}` : ''}${focus ? `
 ${analysisContext}
 ${dspContext}`;
 
-    // ── CALL 1: Inquiry Frame + Node Alpha (Astrology) + Node Beta (Numerology) ──
+    // ── CALL 1: Inquiry Frame + Astrology + Numerology ──
     const call1 = base44.asServiceRole.integrations.Core.InvokeLLM({
       model: 'claude_sonnet_4_6',
-      prompt: `EXECUTE CP-012-O-D-ESP — PHASE I–IV
+      prompt: `CP-012-O-D-ESP PHASE I–IV
 
 ${baseParams}
 
-You are executing CP-012 as a dual esoteric SME. Astrology governs timing/activation/crisis. Numerology governs structure/cycles/recurrence.
+Rules: Astrology = timing/activation. Numerology = structure/cycles. No vague symbolic language. Every claim anchored to specific mechanisms.
 
-PHASE I — Subject Normalization:
-Calculate and show: Sun sign, Moon sign (if TOB available), Rising sign (if TOB available), key active transits. Calculate Life Path (reduce full DOB), Expression (Pythagorean, full birth name), Soul Urge (vowels only), current Personal Year. Show all calculations explicitly.
+PHASE I (show calculations): Sun/Moon/Rising (use TOB if provided). Life Path (reduce DOB), Expression (Pythagorean, full name), Soul Urge (vowels), Personal Year.
 
-PHASE II — Esoteric Inquiry Frame (mandatory):
-Generate and answer 3 governing questions:
-1. PRIMARY: What emotional pattern or developmental task is currently being activated?
-2. SECONDARY: Is the subject in rupture, reintegration, plateau, or threshold transit?
-3. TERTIARY: Which relational/identity pattern is repeating and what astrological/numerological mechanism drives it now?
-Answer each with analytical depth grounded in the birth data. (3-4 paragraphs total)
+PHASE II — Inquiry Frame: Answer 3 questions with analytical depth:
+1. What emotional pattern / developmental task is currently activated?
+2. Is subject in rupture, reintegration, plateau, or threshold transit?
+3. Which relational/identity pattern is repeating and what mechanism drives it now?
 
-PHASE III — Astrological Interpretation (Node Alpha):
-Time-governed psychodynamic map. Reference calculable transits and progressions. Every claim anchored to specific planetary dynamics — no vague symbolic language. (3-4 paragraphs)
+PHASE III — Astrological Interpretation: Time-governed psychodynamic map anchored to current transits/progressions. 3 paragraphs.
 
-PHASE IV — Numerological Interpretation (Node Beta):
-Show all calculations (Life Path, Expression, Soul Urge, Personal Year, active Pinnacle/Challenge). Structural cycle architecture, lesson recurrence, threshold meanings. (3 paragraphs)`,
+PHASE IV — Numerological Interpretation: Show all calculations. Structural cycle architecture, lesson recurrence, threshold meanings. 2-3 paragraphs.`,
       response_json_schema: {
         type: 'object',
         properties: {
@@ -83,29 +78,24 @@ Show all calculations (Life Path, Expression, Soul Urge, Personal Year, active P
       }
     });
 
-    // ── CALL 2: Synthesis + Threshold + Strategic + Limitation + Validation ──
+    // ── CALL 2: Synthesis + Threshold + Strategic + Validation ──
     const call2 = base44.asServiceRole.integrations.Core.InvokeLLM({
       model: 'claude_sonnet_4_6',
-      prompt: `EXECUTE CP-012-O-D-ESP — PHASE V–VII
+      prompt: `CP-012-O-D-ESP PHASE V–VII
 
 ${baseParams}
 
-You are executing CP-012 as a dual esoteric SME. Astrology governs timing/activation/crisis. Numerology governs structure/cycles/recurrence.
+Rules: Astrology = timing/activation. Numerology = structure/cycles. Reconcile both — if divergent, declare tension explicitly, never force false harmony.
 
-For context on this subject's calculated placements: Sun, Moon, Rising (if TOB available), Life Path, Expression, Soul Urge numbers are calculated from the birth data above.
+PHASE V–VI — Unified Emotional Synthesis: Merge both nodes into one subject model. Dominant emotional pattern, core adaptation/defense, relational pattern, current threshold state, developmental task for this mode/timeframe. 4 paragraphs.
 
-PHASE V–VI — Unified Emotional Synthesis:
-Reconcile astrology (timing/activation) and numerology (structure/lesson) into a coherent merged subject model. Identify: dominant emotional pattern, core adaptation/defense, relational pattern, current threshold state, probable developmental task within the mode timeframe. This is the central interpretive output. If convergent: escalate confidence. If divergent: declare tension explicitly. (4-5 paragraphs)
+PHASE VI — Threshold Assessment: Current phase (rupture/reintegration/plateau/threshold transit). What is being crossed. What this period demands. 2 paragraphs.
 
-PHASE VI — Threshold Assessment:
-Subject's current phase — rupture, reintegration, plateau, or threshold transit. What is being crossed or compressed. What this period demands. (2-3 paragraphs)
+PHASE VII — Strategic Translation: Each major finding translated to a concrete behavioral, relational, or developmental implication. Specific, practical. 3 paragraphs.
 
-PHASE VII — Strategic Translation:
-Every major finding translated into at least one behavioral, relational, or developmental implication. Grounded, specific, practical — not generic advice. (3-4 paragraphs)
+LIMITATION STATEMENT: TOB impact, calculation constraints, fidelity caveats. 1 paragraph.
 
-LIMITATION STATEMENT: Material constraints — missing TOB impact, calculation limitations, what reduced-fidelity means for this specific reading. (1-2 paragraphs)
-
-SME VALIDATION: Assess each criterion honestly.`,
+SME VALIDATION: Honest boolean assessment of each criterion.`,
       response_json_schema: {
         type: 'object',
         properties: {
