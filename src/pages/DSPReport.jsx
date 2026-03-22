@@ -99,6 +99,13 @@ export default function DSPReport() {
         
         <div style={{ display: 'flex', gap: 10 }}>
           <button
+            onClick={() => navigate(createPageUrl(`EsotericProfile?id=${subjectId}`))}
+            style={{ ...glassBtnSecondary(t), padding: '9px 20px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}
+          >
+            <Star style={{ width: 15, height: 15, color: '#8b5cf6' }} />
+            Esoteric
+          </button>
+          <button
             onClick={() => navigate(createPageUrl(`SubjectReview?id=${subjectId}`))}
             style={{ ...glassBtnSecondary(t), padding: '9px 20px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}
           >
