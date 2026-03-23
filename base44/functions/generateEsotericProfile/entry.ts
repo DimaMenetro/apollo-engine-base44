@@ -51,7 +51,7 @@ ${dspContext}`;
 
     // ── CALL 1: Inquiry Frame + Astrology + Numerology ──
     const call1 = base44.asServiceRole.integrations.Core.InvokeLLM({
-      model: 'gpt_5',
+      model: 'gpt_5_mini',
       prompt: `CP-012-O-D-ESP PHASE I–IV
 
 ${baseParams}
@@ -80,7 +80,7 @@ PHASE IV — Numerological Interpretation: Show all calculations. Structural cyc
 
     // ── CALL 2: Synthesis + Threshold + Strategic + Validation ──
     const call2 = base44.asServiceRole.integrations.Core.InvokeLLM({
-      model: 'gpt_5',
+      model: 'gpt_5_mini',
       prompt: `CP-012-O-D-ESP PHASE V–VII
 
 ${baseParams}
