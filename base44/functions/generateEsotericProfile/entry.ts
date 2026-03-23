@@ -27,17 +27,8 @@ Deno.serve(async (req) => {
     const subjectName = subject.name || 'Unknown Subject';
     const executionMode = mode || 'PRESENT-STATE';
 
-    const analysisContext = subject.analysis_results
-      ? `Existing Apollo analysis (summary only): ${JSON.stringify({
-          stylometric: subject.analysis_results.stylometric_fingerprint?.summary,
-          cognitive: subject.analysis_results.cognitive_architecture?.summary,
-          affective: subject.analysis_results.affective_state?.summary,
-          behavioral: subject.analysis_results.behavioral_loop?.summary,
-        })}`
-      : '';
-
-    const dspContext = subject.dsp?.executive_summary
-      ? `DSP Executive Summary: ${subject.dsp.executive_summary.slice(0, 800)}`
+    const dspSummary = subject.dsp?.executive_summary
+      ? subject.dsp.executive_summary.slice(0, 600)
       : '';
 
     const baseParams = `Subject: ${subjectName}
@@ -45,63 +36,32 @@ Full Birth Name: ${full_birth_name}
 Date of Birth: ${date_of_birth}
 Time of Birth: ${time_of_birth || 'Not provided — Reduced-Fidelity'}
 Place of Birth: ${place_of_birth}
-Mode: ${executionMode}${timeframe ? `\nTimeframe: ${timeframe}` : ''}${focus ? `\nFocus: ${focus}` : ''}
-${analysisContext}
-${dspContext}`;
+Mode: ${executionMode}${timeframe ? `\nTimeframe: ${timeframe}` : ''}${focus ? `\nFocus: ${focus}` : ''}${dspSummary ? `\nDSP Summary: ${dspSummary}` : ''}`;
 
-    // ── CALL 1: Inquiry Frame + Astrology + Numerology ──
-    const call1 = base44.asServiceRole.integrations.Core.InvokeLLM({
+    const llm = (prompt, schema) => base44.asServiceRole.integrations.Core.InvokeLLM({
       model: 'gpt_5_mini',
-      prompt: `CP-012-O-D-ESP PHASE I–IV
-
-${baseParams}
-
-Rules: Astrology = timing/activation. Numerology = structure/cycles. No vague symbolic language. Every claim anchored to specific mechanisms.
-
-PHASE I (show calculations): Sun/Moon/Rising (use TOB if provided). Life Path (reduce DOB), Expression (Pythagorean, full name), Soul Urge (vowels), Personal Year.
-
-PHASE II — Inquiry Frame: Answer 3 questions with analytical depth:
-1. What emotional pattern / developmental task is currently activated?
-2. Is subject in rupture, reintegration, plateau, or threshold transit?
-3. Which relational/identity pattern is repeating and what mechanism drives it now?
-
-PHASE III — Astrological Interpretation: Time-governed psychodynamic map anchored to current transits/progressions. 3 paragraphs.
-
-PHASE IV — Numerological Interpretation: Show all calculations. Structural cycle architecture, lesson recurrence, threshold meanings. 2-3 paragraphs.`,
-      response_json_schema: {
-        type: 'object',
-        properties: {
-          inquiry_frame: { type: 'string' },
-          astrological_interpretation: { type: 'string' },
-          numerological_interpretation: { type: 'string' },
-        }
-      }
+      prompt,
+      response_json_schema: { type: 'object', properties: schema }
     });
 
-    // ── CALL 2: Synthesis + Threshold + Strategic + Validation ──
-    const call2 = base44.asServiceRole.integrations.Core.InvokeLLM({
-      model: 'gpt_5_mini',
-      prompt: `CP-012-O-D-ESP PHASE V–VII
+    // ── 4 PARALLEL CALLS — each scoped to one output field ──
+    const [rA, rB, rC, rD] = await Promise.all([
 
-${baseParams}
+      // A: Inquiry Frame + Calculations
+      llm(`CP-012 PHASE I–II\n${baseParams}\n\nPHASE I: Show astrological calculations (Sun/Moon/Rising using TOB if provided) and numerological calculations (Life Path, Expression, Soul Urge, Personal Year). Show your arithmetic.\n\nPHASE II — Inquiry Frame: Answer these 3 questions with analytical depth (2 paragraphs each):\n1. What emotional pattern / developmental task is currently activated?\n2. Is subject in rupture, reintegration, plateau, or threshold transit?\n3. Which relational/identity pattern is repeating and what mechanism drives it now?\nNo vague symbolic language. Every claim anchored to a specific planetary or numerological mechanism.`,
+        { inquiry_frame: { type: 'string' } }),
 
-Rules: Astrology = timing/activation. Numerology = structure/cycles. Reconcile both — if divergent, declare tension explicitly, never force false harmony.
+      // B: Astrological + Numerological Interpretation
+      llm(`CP-012 PHASE III–IV\n${baseParams}\n\nPHASE III — Astrological Interpretation (Node Alpha): Time-governed psychodynamic map. Current transits and progressions that are active now. Reference specific degrees and aspects. 3 tight paragraphs.\n\nPHASE IV — Numerological Interpretation (Node Beta): Structural cycle architecture. Life Path lesson, current pinnacle/challenge, personal year meaning. 2 tight paragraphs.\n\nNo vague language. Every claim mechanistically grounded.`,
+        { astrological_interpretation: { type: 'string' }, numerological_interpretation: { type: 'string' } }),
 
-PHASE V–VI — Unified Emotional Synthesis: Merge both nodes into one subject model. Dominant emotional pattern, core adaptation/defense, relational pattern, current threshold state, developmental task for this mode/timeframe. 4 paragraphs.
+      // C: Synthesis + Threshold + Strategic
+      llm(`CP-012 PHASE V–VII\n${baseParams}\n\nPHASE V–VI — Unified Emotional Synthesis: Reconcile astrology (timing) and numerology (structure) into one subject model. Dominant emotional pattern, core defense, relational pattern, current threshold state. If divergent, declare tension explicitly. 3 paragraphs.\n\nPHASE VI — Threshold Assessment: Current phase (rupture/reintegration/plateau/threshold transit). What is being crossed, what this period demands. 2 paragraphs.\n\nPHASE VII — Strategic Translation: Concrete behavioral, relational, and developmental implications. Specific and practical. 2 paragraphs.`,
+        { unified_emotional_synthesis: { type: 'string' }, threshold_assessment: { type: 'string' }, strategic_translation: { type: 'string' } }),
 
-PHASE VI — Threshold Assessment: Current phase (rupture/reintegration/plateau/threshold transit). What is being crossed. What this period demands. 2 paragraphs.
-
-PHASE VII — Strategic Translation: Each major finding translated to a concrete behavioral, relational, or developmental implication. Specific, practical. 3 paragraphs.
-
-LIMITATION STATEMENT: TOB impact, calculation constraints, fidelity caveats. 1 paragraph.
-
-SME VALIDATION: Honest boolean assessment of each criterion.`,
-      response_json_schema: {
-        type: 'object',
-        properties: {
-          unified_emotional_synthesis: { type: 'string' },
-          threshold_assessment: { type: 'string' },
-          strategic_translation: { type: 'string' },
+      // D: Limitation + SME Validation
+      llm(`CP-012 PHASE VIII\n${baseParams}\n\nLIMITATION STATEMENT: In 1 paragraph, describe the material constraints affecting confidence in this reading — missing TOB impact, calculation approximations, fidelity caveats.\n\nSME VALIDATION: Honestly assess whether each criterion was met (true/false) and set execution_status to COMPLIANT or NONCOMPLIANT.`,
+        {
           limitation_statement: { type: 'string' },
           sme_validation: {
             type: 'object',
@@ -114,22 +74,16 @@ SME VALIDATION: Honest boolean assessment of each criterion.`,
               execution_status: { type: 'string' }
             }
           }
-        }
-      }
-    });
+        }),
+    ]);
 
-    // Run both calls in parallel
-    const [raw1, raw2] = await Promise.all([call1, call2]);
-
-    // asServiceRole.integrations wraps the schema result in a `response` key
-    const result1 = raw1?.response ?? raw1;
-    const result2 = raw2?.response ?? raw2;
+    const unwrap = (r) => r?.response ?? r;
+    const [a, b, c, d] = [unwrap(rA), unwrap(rB), unwrap(rC), unwrap(rD)];
 
     const esotericProfile = {
-      ...result1,
-      ...result2,
+      ...a, ...b, ...c, ...d,
       input_fidelity: fidelityState,
-      execution_status: result2.sme_validation?.execution_status || 'COMPLIANT',
+      execution_status: d?.sme_validation?.execution_status || 'COMPLIANT',
       date_executed: new Date().toISOString().split('T')[0],
       include_in_dsp: subject.esoteric_profile?.include_in_dsp || false,
     };
