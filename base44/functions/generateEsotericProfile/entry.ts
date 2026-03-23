@@ -39,7 +39,7 @@ Place of Birth: ${place_of_birth}
 Mode: ${executionMode}${timeframe ? `\nTimeframe: ${timeframe}` : ''}${focus ? `\nFocus: ${focus}` : ''}${dspSummary ? `\nDSP Summary: ${dspSummary}` : ''}`;
 
     const llm = (prompt, schema) => base44.asServiceRole.integrations.Core.InvokeLLM({
-      model: 'gpt_5_mini',
+      model: 'gemini_3_flash',
       prompt,
       response_json_schema: { type: 'object', properties: schema }
     });
