@@ -25,6 +25,7 @@ export default function SubjectReview() {
   const [isEditing, setIsEditing] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateError, setGenerateError] = useState(null);
+  const [autoGeneratePending, setAutoGeneratePending] = useState(false);
   const [dsp, setDsp] = useState({
     document_id: '', protocol_version: 'CP-003-O-D-APL v2.1', date_of_synthesis: '',
     confidence_score: 75, executive_summary: '', classification: '',
@@ -42,7 +43,9 @@ export default function SubjectReview() {
   const subject = subjectData?.[0];
 
   useEffect(() => {
-    if (subject?.dsp) {
+    if (!subject) return;
+    if (subject.dsp?.executive_summary) {
+      // Load existing saved DSP
       const loaded = subject.dsp;
       setDsp(prev => ({
         ...prev,
@@ -54,10 +57,12 @@ export default function SubjectReview() {
         final_assessment: loaded.final_assessment || '',
         confidence_justification: loaded.confidence_justification || '',
       }));
+    } else if (subject.analysis_results) {
+      // No DSP yet but analysis exists — flag for auto-generation
+      setAutoGeneratePending(true);
     }
-  }, [subject]);
-
-
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subject?.id]);
 
   const generateDraftDSP = async () => {
     if (!subject?.analysis_results) return;
@@ -160,6 +165,15 @@ CRITICAL: ALL scores and probabilities MUST be integers on a 0-100 scale. No dec
       setIsGenerating(false);
     }
   };
+
+  // Auto-generate DSP on first visit when analysis exists but no DSP saved yet
+  useEffect(() => {
+    if (autoGeneratePending && !isGenerating) {
+      setAutoGeneratePending(false);
+      generateDraftDSP();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoGeneratePending]);
 
   const updateMutation = useMutation({
     mutationFn: (data) => base44.entities.Subject.update(subjectId, data),
