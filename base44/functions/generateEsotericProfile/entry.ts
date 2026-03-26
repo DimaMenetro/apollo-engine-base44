@@ -31,14 +31,40 @@ Deno.serve(async (req) => {
       ? subject.dsp.executive_summary.slice(0, 600)
       : '';
 
-    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+
+    // Pre-compute Personal Year so the LLM cannot hallucinate it
+    // Personal Year = reduce(birth_day + birth_month + current_year digits)
+    const dobMatch = date_of_birth.match(/(\d{1,2})[\/\-\s]?(\w+)[\/\-\s,\s]+(\d{4})/i);
+    const monthMap = { january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12 };
+    let personalYearNote = '';
+    try {
+      // Parse birth month and day from whatever format is provided
+      const rawDob = date_of_birth.toLowerCase().trim();
+      let bMonth = null, bDay = null;
+      for (const [name, num] of Object.entries(monthMap)) {
+        if (rawDob.includes(name)) { bMonth = num; break; }
+      }
+      const dayMatch = rawDob.match(/\b(\d{1,2})\b/);
+      if (dayMatch) bDay = parseInt(dayMatch[1]);
+      if (bMonth && bDay) {
+        const reduce = (n) => { while (n > 9 && n !== 11 && n !== 22 && n !== 33) { n = String(n).split('').reduce((a,d) => a+parseInt(d),0); } return n; };
+        const yearDigits = String(currentYear).split('').reduce((a,d) => a+parseInt(d),0);
+        const personalYear = reduce(bDay + bMonth + yearDigits);
+        personalYearNote = `\nPRE-COMPUTED (do not recalculate): Personal Year for ${currentYear} = ${personalYear} (birth day ${bDay} + birth month ${bMonth} + ${currentYear} digit sum ${yearDigits} = reduced to ${personalYear})`;
+      }
+    } catch(_) {}
+
     const baseParams = `Subject: ${subjectName}
 Full Birth Name: ${full_birth_name}
 Date of Birth: ${date_of_birth}
 Time of Birth: ${time_of_birth || 'Not provided — Reduced-Fidelity'}
 Place of Birth: ${place_of_birth}
 Mode: ${executionMode}
-CURRENT DATE (for all transit and personal year calculations): ${today}${timeframe ? `\nTimeframe: ${timeframe}` : ''}${focus ? `\nFocus: ${focus}` : ''}${dspSummary ? `\nDSP Summary: ${dspSummary}` : ''}`;
+CURRENT DATE: ${today} — Year: ${currentYear}, Month: ${currentMonth}. Use ONLY this date for all transit, progression, and personal year calculations. Do NOT use any other year.${personalYearNote}${timeframe ? `\nTimeframe: ${timeframe}` : ''}${focus ? `\nFocus: ${focus}` : ''}${dspSummary ? `\nDSP Summary: ${dspSummary}` : ''}`;
 
     const llm = (prompt, schema) => base44.asServiceRole.integrations.Core.InvokeLLM({
       model: 'gemini_3_flash',
