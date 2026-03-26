@@ -73,7 +73,7 @@ export default function SubjectReview() {
         }
       };
 
-      const response = await base44.integrations.Core.InvokeLLM({
+      const rawLLM = await base44.integrations.Core.InvokeLLM({
         model: "claude_sonnet_4_6",
         prompt: `You are executing the Apollo Protocol (CP-003-O-D-APL v2.1) to generate a Definitive Subject Profile (DSP) for subject "${subject.name}".
 
@@ -130,6 +130,9 @@ CRITICAL: ALL scores and probabilities MUST be integers on a 0-100 scale. No dec
           }
         }
       });
+
+      // InvokeLLM with response_json_schema returns the object directly
+      const response = (typeof rawLLM === 'string') ? JSON.parse(rawLLM) : rawLLM;
 
       const today = new Date().toISOString().split('T')[0];
       setDsp({

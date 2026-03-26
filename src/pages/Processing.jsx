@@ -328,14 +328,15 @@ export default function Processing() {
           Edit Data
         </button>
 
-        {subject.status === 'review' ? (
-          <button
-            onClick={() => navigate(createPageUrl(`SubjectReview?id=${subjectId}`))}
-            style={{ ...glassBtn(t), padding: '10px 22px', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}
-          >
-            Review DSP Draft <ArrowRight style={{ width: 15, height: 15 }} />
-          </button>
-        ) : (
+        <div style={{ display: 'flex', gap: 10 }}>
+          {subject.status === 'review' && (
+            <button
+              onClick={() => navigate(createPageUrl(`SubjectReview?id=${subjectId}`))}
+              style={{ ...glassBtnSecondary(t), padding: '10px 22px', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}
+            >
+              Review DSP Draft <ArrowRight style={{ width: 15, height: 15 }} />
+            </button>
+          )}
           <button
             onClick={runAnalysis}
             disabled={isProcessing}
@@ -347,7 +348,7 @@ export default function Processing() {
               <><Activity style={{ width: 15, height: 15 }} />Run Analysis</>
             )}
           </button>
-        )}
+        </div>
       </div>
     </div>
   );
