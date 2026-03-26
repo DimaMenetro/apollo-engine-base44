@@ -115,6 +115,9 @@ Deno.serve(async (req) => {
       throw new Error(`AssemblyAI transcription failed: ${transcript.reason?.message}`);
     }
 
+    console.log('Hume result:', JSON.stringify(predictions, null, 2));
+    console.log('AssemblyAI result:', transcriptText);
+
     // Fatal: both services must return data for video processing
     if (!predictions || !transcriptText) {
       throw new Error(`Video processing incomplete: Hume returned ${predictions ? 'data' : 'null'}, AssemblyAI returned ${transcriptText ? 'data' : 'null'}`);
