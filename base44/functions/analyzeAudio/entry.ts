@@ -4,7 +4,6 @@ const HUME_API_KEY    = Deno.env.get("HUME_API_KEY");
 const ASSEMBLY_API_KEY = Deno.env.get("ASSEMBLYAI_API_KEY");
 const HUME_API_URL    = "https://api.hume.ai/v0/batch/jobs";
 const ASSEMBLY_API_URL = "https://api.assemblyai.com/v2";
-const ASSEMBLY_API_URL_V3 = "https://api.assemblyai.com/v3";
 
 // ── Hume: poll until job completes ─────────────────────────────────────────
 async function pollHumeJob(jobId) {
@@ -33,11 +32,11 @@ async function pollHumeJob(jobId) {
 
 // ── AssemblyAI: submit + poll until transcript is ready ────────────────────
 async function transcribeWithAssembly(fileUrl) {
-  // Submit using v3 API with correct speech_model field
-  const submitRes = await fetch(`${ASSEMBLY_API_URL_V3}/transcript`, {
+  // Submit using v2 API
+  const submitRes = await fetch(`${ASSEMBLY_API_URL}/transcript`, {
     method: 'POST',
     headers: { 'Authorization': ASSEMBLY_API_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ audio_url: fileUrl, speech_model: 'universal' }),
+    body: JSON.stringify({ audio_url: fileUrl }),
   });
   if (!submitRes.ok) throw new Error(`AssemblyAI submit failed: ${await submitRes.text()}`);
   const { id } = await submitRes.json();
@@ -49,7 +48,7 @@ async function transcribeWithAssembly(fileUrl) {
   while (status === 'processing' || status === 'queued') {
     if (attempts++ > 60) throw new Error('AssemblyAI transcript timed out');
     await new Promise(r => setTimeout(r, 5000));
-    const pollRes = await fetch(`${ASSEMBLY_API_URL_V3}/transcript/${id}`, {
+    const pollRes = await fetch(`${ASSEMBLY_API_URL}/transcript/${id}`, {
       headers: { 'Authorization': ASSEMBLY_API_KEY },
     });
     result = await pollRes.json();
