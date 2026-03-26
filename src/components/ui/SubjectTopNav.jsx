@@ -53,7 +53,7 @@ export default function SubjectTopNav({ currentPageName }) {
           transition={{ type: 'spring', stiffness: 400, damping: 30 }}
           style={{
             position: 'sticky',
-            top: 0,
+            top: 57,
             zIndex: 40,
             display: 'flex',
             justifyContent: 'center',

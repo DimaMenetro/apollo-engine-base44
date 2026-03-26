@@ -12,6 +12,7 @@ import MotivationsSection from '../components/review/MotivationsSection';
 import DataStreamUploader from '../components/intake/DataStreamUploader';
 import { motion } from 'framer-motion';
 import { formatDocumentId } from '../components/utils/formatDocumentId';
+import { useAccessory } from '../components/ui/AccessoryContext';
 
 export default function SubjectReview() {
   const navigate = useNavigate();
@@ -22,6 +23,7 @@ export default function SubjectReview() {
   const urlParams = new URLSearchParams(window.location.search);
   const subjectId = urlParams.get('id');
 
+  const { startProcessing, updateProgress, finishProcessing, failProcessing } = useAccessory();
   const [isEditing, setIsEditing] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateError, setGenerateError] = useState(null);
@@ -37,7 +39,7 @@ export default function SubjectReview() {
   const { data: subjectData, isLoading } = useQuery({
     queryKey: ['subject', subjectId],
     queryFn: () => base44.entities.Subject.filter({ id: subjectId }),
-    enabled: !!subjectId, retry: 1,
+    enabled: !!subjectId, retry: 1, staleTime: 30_000,
   });
 
   const subject = subjectData?.[0];
@@ -46,6 +48,8 @@ export default function SubjectReview() {
     if (!subject?.analysis_results) return;
     setIsGenerating(true);
     setGenerateError(null);
+    startProcessing(subjectId, subject.name);
+    updateProgress('Synthesizing DSP via CP-003-O-D-APL...', 10);
     try {
       const analysisContext = JSON.stringify(subject.analysis_results);
       const traitSchema = {
@@ -58,6 +62,7 @@ export default function SubjectReview() {
         }
       };
 
+      updateProgress('LLM synthesis in progress — Claude Sonnet...', 30);
       const rawLLM = await base44.integrations.Core.InvokeLLM({
         model: "claude_sonnet_4_6",
         prompt: `You are executing the Apollo Protocol (CP-003-O-D-APL v2.1) to generate a Definitive Subject Profile (DSP) for subject "${subject.name}".
@@ -116,6 +121,7 @@ CRITICAL: ALL scores and probabilities MUST be integers on a 0-100 scale. No dec
         }
       });
 
+      updateProgress('Structuring profile output...', 80);
       // InvokeLLM with response_json_schema returns the object directly
       const response = (typeof rawLLM === 'string') ? JSON.parse(rawLLM) : rawLLM;
 
@@ -137,8 +143,10 @@ CRITICAL: ALL scores and probabilities MUST be integers on a 0-100 scale. No dec
         fears: response.fears || [],
         final_assessment: response.final_assessment || '',
       });
+      finishProcessing(subjectId);
     } catch (error) {
       setGenerateError(error.message || 'DSP generation failed. Please retry.');
+      failProcessing(subjectId);
     } finally {
       setIsGenerating(false);
     }
