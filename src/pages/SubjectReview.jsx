@@ -61,10 +61,13 @@ export default function SubjectReview() {
   }, [subject?.analysis_results]);
 
   const generateDraftDSP = async () => {
-    if (!subject?.analysis_results) return;
+    if (!subject) return;
     setIsGenerating(true);
     try {
-      const analysisContext = JSON.stringify(subject.analysis_results);
+      // Use analysis_results if available, otherwise fall back to raw file streams
+      const analysisContext = subject.analysis_results
+        ? JSON.stringify(subject.analysis_results)
+        : `Subject has uploaded files but has not yet been processed through the analysis pipeline. Generate the DSP based on the subject name "${subject.name}" and any available context from the esoteric profile: ${subject.esoteric_profile ? JSON.stringify(subject.esoteric_profile).slice(0, 800) : 'none'}`;
       const traitSchema = {
         type: "object",
         properties: {
@@ -74,8 +77,14 @@ export default function SubjectReview() {
           indicators: { type: "array", items: { type: "string" } }
         }
       };
+      const fileUrls = [
+        ...(subject.stream_a_text || []),
+        ...(subject.stream_d_behavioral || []),
+      ].slice(0, 4);
+
       const response = await base44.integrations.Core.InvokeLLM({
         model: "claude_sonnet_4_6",
+        file_urls: fileUrls.length > 0 ? fileUrls : undefined,
         prompt: `You are executing the Apollo Protocol (CP-003-O-D-APL v2.1) to generate a Definitive Subject Profile (DSP) for subject "${subject.name}".
 
 Multi-stream analysis data:
@@ -292,7 +301,7 @@ CRITICAL: ALL scores and probabilities MUST be integers on a 0-100 scale. No dec
           <button
             onClick={generateDraftDSP}
             disabled={isGenerating || !subject?.analysis_results}
-            style={{ ...glassBtnSecondary(t), padding: '9px 18px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 7, opacity: !subject?.analysis_results ? 0.4 : 1 }}
+            style={{ ...glassBtnSecondary(t), padding: '9px 18px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 7 }}
           >
             {isGenerating ? <Loader2 style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} /> : <RefreshCw style={{ width: 14, height: 14 }} />}
             Regenerate
