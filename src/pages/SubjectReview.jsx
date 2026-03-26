@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import { useTheme } from '../components/theme/ThemeProvider';
 import { light, dark, glassCard, glassBtn, glassBtnSecondary } from '../components/ui/LiquidGlass';
-import { ArrowLeft, Lock, Loader2, FileText, Brain, GitBranch, AlertTriangle, Edit3, Save, CheckCircle2, RefreshCw, Star } from 'lucide-react';
+import { ArrowLeft, Lock, Loader2, FileText, Brain, GitBranch, AlertTriangle, Edit3, Save, CheckCircle2, RefreshCw, Star, Cpu } from 'lucide-react';
 import PersonalityMatrix from '../components/review/PersonalityMatrix';
 import ActionResponseMatrix from '../components/review/ActionResponseMatrix';
 import MotivationsSection from '../components/review/MotivationsSection';
@@ -59,13 +59,10 @@ export default function SubjectReview() {
 
 
   const generateDraftDSP = async () => {
-    if (!subject) return;
+    if (!subject?.analysis_results) return;
     setIsGenerating(true);
     try {
-      // Use analysis_results if available, otherwise fall back to raw file streams
-      const analysisContext = subject.analysis_results
-        ? JSON.stringify(subject.analysis_results)
-        : `Subject has uploaded files but has not yet been processed through the analysis pipeline. Generate the DSP based on the subject name "${subject.name}" and any available context from the esoteric profile: ${subject.esoteric_profile ? JSON.stringify(subject.esoteric_profile).slice(0, 800) : 'none'}`;
+      const analysisContext = JSON.stringify(subject.analysis_results);
       const traitSchema = {
         type: "object",
         properties: {
@@ -75,20 +72,10 @@ export default function SubjectReview() {
           indicators: { type: "array", items: { type: "string" } }
         }
       };
-      const fileUrls = [
-        ...(subject.stream_a_text || []),
-        ...(subject.stream_b_audio || []),
-        ...(subject.stream_c_video || []),
-        ...(subject.stream_d_behavioral || []),
-        ...(subject.stream_e_analog || []),
-      ].slice(0, 5);
 
-      const rawResponse = await base44.integrations.Core.InvokeLLM({
+      const response = await base44.integrations.Core.InvokeLLM({
         model: "claude_sonnet_4_6",
-        file_urls: fileUrls.length > 0 ? fileUrls : undefined,
         prompt: `You are executing the Apollo Protocol (CP-003-O-D-APL v2.1) to generate a Definitive Subject Profile (DSP) for subject "${subject.name}".
-
-CRITICAL: Your ENTIRE response must be a single valid JSON object. No preamble, no explanation, no markdown fences. Start with { and end with }.
 
 Multi-stream analysis data:
 ${analysisContext}
@@ -111,7 +98,7 @@ COGNITIVE ARCHITECTURE:
 - thinking_style: 2-3 sentences on overall cognitive approach
 - epistemic_requirements: 2-3 sentences on what the subject requires to know and why
 - defense_mechanisms: 2-3 sentences on specific psychological defense patterns with named mechanisms
-- sub_sections: array of 4-6 named cognitive dimensions, each with a title and 2-4 sentence content paragraph. Use evidence-appropriate titles such as: "Systems-Oriented Intelligence", "Predictive Pattern Modeling", "Formalization Instinct", "Recursive Self-Audit", "Temporal Perception", "Epistemic Defense Architecture"
+- sub_sections: array of 4-6 named cognitive dimensions, each with a title and 2-4 sentence content paragraph.
 
 BEHAVIORAL PATTERNS: 4-6 named patterns. Each with label, 2-3 sentence description, context/frequency note.
 
@@ -120,16 +107,29 @@ PREDICTIONS: 4-6 behavioral scenarios. Each with trigger, context, predicted_beh
 MOTIVATIONS: 5-7 specific core motivations as strings.
 FEARS: 4-6 specific core fears as strings.
 
-FINAL ASSESSMENT: 4-6 paragraphs integrating all findings into a definitive psychological portrait. Should function as a standalone clinical summary. Conclude with a single defining sentence about the subject's core nature.
+FINAL ASSESSMENT: 4-6 paragraphs integrating all findings into a definitive psychological portrait.
 
 CONFIDENCE SCORE: Integer 0-100.
-CONFIDENCE JUSTIFICATION: 2-3 sentences explaining the confidence level, referencing which data streams contributed most.
+CONFIDENCE JUSTIFICATION: 2-3 sentences explaining the confidence level.
 
-CRITICAL: ALL scores and probabilities MUST be integers on a 0-100 scale. No decimals.`
+CRITICAL: ALL scores and probabilities MUST be integers on a 0-100 scale. No decimals.`,
+        response_json_schema: {
+          type: "object",
+          properties: {
+            executive_summary: { type: "string" },
+            classification: { type: "string" },
+            confidence_score: { type: "number" },
+            confidence_justification: { type: "string" },
+            personality_matrix: { type: "object", properties: { openness: traitSchema, conscientiousness: traitSchema, extraversion: traitSchema, agreeableness: traitSchema, neuroticism: traitSchema } },
+            cognitive_architecture: { type: "object", properties: { thinking_style: { type: "string" }, epistemic_requirements: { type: "string" }, defense_mechanisms: { type: "string" }, sub_sections: { type: "array", items: { type: "object", properties: { title: { type: "string" }, content: { type: "string" } } } } } },
+            behavioral_patterns: { type: "array", items: { type: "object", properties: { label: { type: "string" }, description: { type: "string" }, context: { type: "string" } } } },
+            predictions: { type: "array", items: { type: "object" } },
+            motivations: { type: "array", items: { type: "string" } },
+            fears: { type: "array", items: { type: "string" } },
+            final_assessment: { type: "string" },
+          }
+        }
       });
-
-      // Claude returns a plain string — parse it as JSON
-      const response = typeof rawResponse === 'string' ? JSON.parse(rawResponse) : rawResponse;
 
       const today = new Date().toISOString().split('T')[0];
       setDsp({
@@ -228,45 +228,61 @@ CRITICAL: ALL scores and probabilities MUST be integers on a 0-100 scale. No dec
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {/* Re-Process — only shown if no analysis_results yet */}
+          {!subject?.analysis_results && (
+            <button
+              onClick={() => navigate(createPageUrl(`Processing?id=${subjectId}`))}
+              title="Re-Process files to generate analysis"
+              style={{ ...glassBtnSecondary(t), width: 36, height: 36, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderColor: 'rgba(245,158,11,0.35)' }}
+            >
+              <Cpu style={{ width: 15, height: 15, color: '#f59e0b' }} />
+            </button>
+          )}
+          {/* Esoteric */}
           <button
             onClick={() => navigate(createPageUrl(`EsotericProfile?id=${subjectId}`))}
-            style={{ ...glassBtnSecondary(t), padding: '9px 18px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 7 }}
+            title="Esoteric Profile"
+            style={{ ...glassBtnSecondary(t), width: 36, height: 36, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
-            <Star style={{ width: 14, height: 14, color: '#8b5cf6' }} />
-            Esoteric
+            <Star style={{ width: 15, height: 15, color: '#8b5cf6' }} />
           </button>
+          {/* Regenerate */}
           <button
             onClick={generateDraftDSP}
-            disabled={isGenerating}
-            style={{ ...glassBtnSecondary(t), padding: '9px 18px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 7 }}
+            disabled={isGenerating || !subject?.analysis_results}
+            title={!subject?.analysis_results ? 'Run Processing first to generate analysis results' : 'Regenerate DSP'}
+            style={{ ...glassBtnSecondary(t), width: 36, height: 36, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: !subject?.analysis_results ? 0.4 : 1 }}
           >
-            {isGenerating ? <Loader2 style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} /> : <RefreshCw style={{ width: 14, height: 14 }} />}
-            Regenerate
+            {isGenerating ? <Loader2 style={{ width: 15, height: 15, animation: 'spin 1s linear infinite' }} /> : <RefreshCw style={{ width: 15, height: 15 }} />}
           </button>
+          {/* Save / Edit */}
           {isEditing ? (
             <button
               onClick={handleSaveDraft}
               disabled={updateMutation.isPending}
-              style={{ ...glassBtnSecondary(t), padding: '9px 18px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 7 }}
+              title="Save Draft"
+              style={{ ...glassBtnSecondary(t), width: 36, height: 36, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
-              {updateMutation.isPending ? <Loader2 style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} /> : <Save style={{ width: 14, height: 14 }} />}
-              Save Draft
+              {updateMutation.isPending ? <Loader2 style={{ width: 15, height: 15, animation: 'spin 1s linear infinite' }} /> : <Save style={{ width: 15, height: 15 }} />}
             </button>
           ) : (
             <button
               onClick={() => setIsEditing(true)}
-              style={{ ...glassBtnSecondary(t), padding: '9px 18px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 7 }}
+              title="Edit"
+              style={{ ...glassBtnSecondary(t), width: 36, height: 36, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
-              <Edit3 style={{ width: 14, height: 14 }} /> Edit
+              <Edit3 style={{ width: 15, height: 15 }} />
             </button>
           )}
+          {/* Finalize */}
           <button
             onClick={handleFinalize}
             disabled={updateMutation.isPending}
-            style={{ ...glassBtn(t), padding: '9px 18px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 7 }}
+            title="Finalize DSP"
+            style={{ ...glassBtn(t), width: 36, height: 36, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
-            <Lock style={{ width: 14, height: 14 }} /> Finalize DSP
+            <Lock style={{ width: 15, height: 15 }} />
           </button>
         </div>
       </div>
