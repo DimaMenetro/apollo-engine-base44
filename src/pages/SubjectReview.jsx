@@ -52,7 +52,7 @@ export default function SubjectReview() {
     setIsGenerating(true);
     setGenerateError(null);
     startProcessing(subjectId, subject.name);
-    updateProgress('Synthesizing DSP via CP-003-O-D-APL...', 10);
+    updateProgress('DSP Synthesis in progress...', 10);
     try {
       const analysisContext = JSON.stringify(subject.analysis_results);
       const traitSchema = {
@@ -65,7 +65,7 @@ export default function SubjectReview() {
         }
       };
 
-      updateProgress('LLM synthesis in progress — Claude Sonnet...', 30);
+      updateProgress('Claude Sonnet synthesizing profile...', 30);
       const rawLLM = await base44.integrations.Core.InvokeLLM({
         model: "claude_sonnet_4_6",
         prompt: `You are executing the Apollo Protocol (CP-003-O-D-APL v2.1) to generate a Definitive Subject Profile (DSP) for subject "${subject.name}".
@@ -124,7 +124,7 @@ CRITICAL: ALL scores and probabilities MUST be integers on a 0-100 scale. No dec
         }
       });
 
-      updateProgress('Structuring profile output...', 80);
+      updateProgress('Structuring DSP output...', 80);
       // InvokeLLM with response_json_schema returns the object directly
       const response = (typeof rawLLM === 'string') ? JSON.parse(rawLLM) : rawLLM;
 
@@ -150,6 +150,8 @@ CRITICAL: ALL scores and probabilities MUST be integers on a 0-100 scale. No dec
       setDsp(newDsp);
       // Persist immediately so page reload / re-nav doesn't re-trigger generation
       await base44.entities.Subject.update(subjectId, { dsp: newDsp, status: 'review' });
+      // Invalidate cache so useEffect sees the saved DSP and won't re-trigger generation
+      queryClient.invalidateQueries(['subject', subjectId]);
       finishProcessing(subjectId);
     } catch (error) {
       setGenerateError(error.message || 'DSP generation failed. Please retry.');
