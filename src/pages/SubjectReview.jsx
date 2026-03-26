@@ -85,10 +85,12 @@ export default function SubjectReview() {
         ...(subject.stream_e_analog || []),
       ].slice(0, 5);
 
-      const response = await base44.integrations.Core.InvokeLLM({
-        model: "gemini_3_flash",
+      const rawResponse = await base44.integrations.Core.InvokeLLM({
+        model: "claude_sonnet_4_6",
         file_urls: fileUrls.length > 0 ? fileUrls : undefined,
         prompt: `You are executing the Apollo Protocol (CP-003-O-D-APL v2.1) to generate a Definitive Subject Profile (DSP) for subject "${subject.name}".
+
+CRITICAL: Your ENTIRE response must be a single valid JSON object. No preamble, no explanation, no markdown fences. Start with { and end with }.
 
 Multi-stream analysis data:
 ${analysisContext}
@@ -125,76 +127,11 @@ FINAL ASSESSMENT: 4-6 paragraphs integrating all findings into a definitive psyc
 CONFIDENCE SCORE: Integer 0-100.
 CONFIDENCE JUSTIFICATION: 2-3 sentences explaining the confidence level, referencing which data streams contributed most.
 
-CRITICAL: ALL scores and probabilities MUST be integers on a 0-100 scale. No decimals.`,
-        response_json_schema: {
-          type: "object",
-          properties: {
-            executive_summary: { type: "string" },
-            classification: { type: "string" },
-            confidence_score: { type: "number" },
-            confidence_justification: { type: "string" },
-            personality_matrix: {
-              type: "object",
-              properties: {
-                openness: traitSchema,
-                conscientiousness: traitSchema,
-                extraversion: traitSchema,
-                agreeableness: traitSchema,
-                neuroticism: traitSchema,
-              }
-            },
-            cognitive_architecture: {
-              type: "object",
-              properties: {
-                thinking_style: { type: "string" },
-                epistemic_requirements: { type: "string" },
-                defense_mechanisms: { type: "string" },
-                sub_sections: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      title: { type: "string" },
-                      content: { type: "string" }
-                    }
-                  }
-                }
-              }
-            },
-            behavioral_patterns: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  label: { type: "string" },
-                  description: { type: "string" },
-                  context: { type: "string" }
-                }
-              }
-            },
-            predictions: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  trigger: { type: "string" },
-                  context: { type: "string" },
-                  predicted_behavior: { type: "string" },
-                  probability: { type: "number" },
-                  confidence_interval: {
-                    type: "object",
-                    properties: { lower: { type: "number" }, upper: { type: "number" } }
-                  },
-                  temporal_factors: { type: "string" }
-                }
-              }
-            },
-            motivations: { type: "array", items: { type: "string" } },
-            fears: { type: "array", items: { type: "string" } },
-            final_assessment: { type: "string" },
-          }
-        }
+CRITICAL: ALL scores and probabilities MUST be integers on a 0-100 scale. No decimals.`
       });
+
+      // Claude returns a plain string — parse it as JSON
+      const response = typeof rawResponse === 'string' ? JSON.parse(rawResponse) : rawResponse;
 
       const today = new Date().toISOString().split('T')[0];
       setDsp({
