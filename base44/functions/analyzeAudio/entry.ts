@@ -30,32 +30,33 @@ async function pollHumeJob(jobId) {
   if (status !== 'COMPLETED') throw new Error(`Hume job did not complete. Status: ${status}`);
 }
 
-// ── AssemblyAI: submit + poll until transcript is ready ────────────────────
+// ── AssemblyAI v3: submit + poll until transcript is ready ─────────────────
 async function transcribeWithAssembly(fileUrl) {
-  // Submit using v2 API
+  // Submit using v3 API
   const submitRes = await fetch(`${ASSEMBLY_API_URL}/transcript`, {
     method: 'POST',
     headers: { 'Authorization': ASSEMBLY_API_KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify({ audio_url: fileUrl }),
   });
-  if (!submitRes.ok) throw new Error(`AssemblyAI submit failed: ${await submitRes.text()}`);
+  if (!submitRes.ok) throw new Error(`AssemblyAI v3 submit failed: ${await submitRes.text()}`);
   const { id } = await submitRes.json();
 
-  // Poll
+  // Poll v3 API
   let status = 'processing';
   let result = null;
   let attempts = 0;
   while (status === 'processing' || status === 'queued') {
-    if (attempts++ > 60) throw new Error('AssemblyAI transcript timed out');
+    if (attempts++ > 60) throw new Error('AssemblyAI v3 transcript timed out');
     await new Promise(r => setTimeout(r, 5000));
     const pollRes = await fetch(`${ASSEMBLY_API_URL}/transcript/${id}`, {
       headers: { 'Authorization': ASSEMBLY_API_KEY },
     });
+    if (!pollRes.ok) throw new Error(`AssemblyAI v3 poll failed: ${await pollRes.text()}`);
     result = await pollRes.json();
     status = result.status;
   }
 
-  if (status === 'error') throw new Error(`AssemblyAI error: ${result.error}`);
+  if (status === 'error') throw new Error(`AssemblyAI v3 error: ${result.error}`);
   return result.text || '';
 }
 
