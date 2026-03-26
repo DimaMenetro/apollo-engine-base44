@@ -117,6 +117,12 @@ export default function Processing() {
 
   const runAnalysis = async () => {
     if (!subject) return;
+    if (subject.status === 'review' && subject.analysis_results) {
+      const confirmed = window.confirm(
+        'This subject has already been processed and is pending review. Re-running analysis will overwrite existing results. Continue?'
+      );
+      if (!confirmed) return;
+    }
     setIsProcessing(true);
     startProcessing(subjectId, subject.name);
     const results = {};
