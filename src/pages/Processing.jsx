@@ -95,7 +95,7 @@ export default function Processing() {
         continue;
       }
 
-      if (['csv', 'pdf', 'png', 'jpg', 'jpeg'].includes(ext)) {
+      if (['csv', 'pdf', 'png', 'jpg', 'jpeg', 'txt', 'md'].includes(ext)) {
         processedUrls.push(url);
         info.push(`${ext.toUpperCase()} processed: ${fileName}`);
         continue;
