@@ -6,6 +6,7 @@ import GlassTabBar from './components/ui/GlassTabBar';
 import ThemeToggle from './components/theme/ThemeToggle';
 import { light, dark } from './components/ui/LiquidGlass';
 import { Radar } from 'lucide-react';
+import SubjectTopNav from './components/ui/SubjectTopNav';
 
 // ─── ROOT LAYOUT ──────────────────────────────────────────────────────────────
 // Follows DS-001-G-D-LGT v2.1 architecture:
@@ -79,6 +80,9 @@ function LayoutInner({ children, currentPageName }) {
         {/* Theme toggle */}
         <ThemeToggle />
       </header>
+
+      {/* ── Subject sub-navigation (appears on subject-scoped pages) ───────── */}
+      <SubjectTopNav currentPageName={currentPageName} />
 
       {/* ── Page content ────────────────────────────────────────────────────── */}
       {/* paddingBottom: 120 ensures content clears the floating tab bar */}

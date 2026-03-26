@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import { useTheme } from '../components/theme/ThemeProvider';
 import { light, dark, glassCard, glassBtn, glassBtnSecondary } from '../components/ui/LiquidGlass';
-import { ArrowLeft, Lock, Loader2, FileText, Brain, GitBranch, AlertTriangle, Edit3, Save, CheckCircle2, RefreshCw, Star, Cpu } from 'lucide-react';
+import { ArrowLeft, Lock, Loader2, FileText, Brain, GitBranch, AlertTriangle, Edit3, Save, CheckCircle2, RefreshCw } from 'lucide-react';
 import PersonalityMatrix from '../components/review/PersonalityMatrix';
 import ActionResponseMatrix from '../components/review/ActionResponseMatrix';
 import MotivationsSection from '../components/review/MotivationsSection';
@@ -229,24 +229,6 @@ CRITICAL: ALL scores and probabilities MUST be integers on a 0-100 scale. No dec
         </div>
 
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {/* Re-Process — only shown if no analysis_results yet */}
-          {!subject?.analysis_results && (
-            <button
-              onClick={() => navigate(createPageUrl(`Processing?id=${subjectId}`))}
-              title="Re-Process files to generate analysis"
-              style={{ ...glassBtnSecondary(t), width: 36, height: 36, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderColor: 'rgba(245,158,11,0.35)' }}
-            >
-              <Cpu style={{ width: 15, height: 15, color: '#f59e0b' }} />
-            </button>
-          )}
-          {/* Esoteric */}
-          <button
-            onClick={() => navigate(createPageUrl(`EsotericProfile?id=${subjectId}`))}
-            title="Esoteric Profile"
-            style={{ ...glassBtnSecondary(t), width: 36, height: 36, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Star style={{ width: 15, height: 15, color: '#8b5cf6' }} />
-          </button>
           {/* Regenerate */}
           <button
             onClick={generateDraftDSP}
