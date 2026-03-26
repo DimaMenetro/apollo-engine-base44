@@ -56,9 +56,7 @@ export default function SubjectReview() {
     }
   }, [subject]);
 
-  useEffect(() => {
-    if (subject?.analysis_results && !subject.dsp?.executive_summary) generateDraftDSP();
-  }, [subject?.analysis_results]);
+
 
   const generateDraftDSP = async () => {
     if (!subject) return;
