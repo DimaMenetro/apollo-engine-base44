@@ -31,12 +31,14 @@ Deno.serve(async (req) => {
       ? subject.dsp.executive_summary.slice(0, 600)
       : '';
 
+    const today = new Date().toISOString().split('T')[0];
     const baseParams = `Subject: ${subjectName}
 Full Birth Name: ${full_birth_name}
 Date of Birth: ${date_of_birth}
 Time of Birth: ${time_of_birth || 'Not provided — Reduced-Fidelity'}
 Place of Birth: ${place_of_birth}
-Mode: ${executionMode}${timeframe ? `\nTimeframe: ${timeframe}` : ''}${focus ? `\nFocus: ${focus}` : ''}${dspSummary ? `\nDSP Summary: ${dspSummary}` : ''}`;
+Mode: ${executionMode}
+CURRENT DATE (for all transit and personal year calculations): ${today}${timeframe ? `\nTimeframe: ${timeframe}` : ''}${focus ? `\nFocus: ${focus}` : ''}${dspSummary ? `\nDSP Summary: ${dspSummary}` : ''}`;
 
     const llm = (prompt, schema) => base44.asServiceRole.integrations.Core.InvokeLLM({
       model: 'gemini_3_flash',
