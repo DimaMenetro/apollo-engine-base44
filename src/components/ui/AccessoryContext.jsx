@@ -27,8 +27,8 @@ export function AccessoryProvider({ children }) {
     setState((prev) => ({ ...prev, status: 'running', moduleTitle, progress }));
   }, []);
 
-  const finishProcessing = useCallback((subjectId) => {
-    setState((prev) => ({ ...prev, status: 'completed', progress: 100, subjectId }));
+  const finishProcessing = useCallback((subjectId, message) => {
+    setState((prev) => ({ ...prev, status: 'completed', progress: 100, subjectId, moduleTitle: message || prev.moduleTitle }));
     // Auto-dismiss after 3s
     setTimeout(() => setState(IDLE), 3000);
   }, []);

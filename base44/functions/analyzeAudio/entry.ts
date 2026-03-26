@@ -124,9 +124,9 @@ Deno.serve(async (req) => {
       humeData = predictions[0].results;
     }
 
-    // Fatal: both services must return data for video processing
-    if (!humeData || !transcriptText) {
-      throw new Error(`Video processing incomplete: Hume returned ${humeData ? 'data' : 'null'}, AssemblyAI returned ${transcriptText ? 'data' : 'null'}`);
+    // At least one service must succeed
+    if (!humeData && !transcriptText) {
+      throw new Error('Both Hume and AssemblyAI failed to process the file');
     }
 
     return Response.json({

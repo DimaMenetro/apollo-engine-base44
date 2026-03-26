@@ -152,7 +152,8 @@ CRITICAL: ALL scores and probabilities MUST be integers on a 0-100 scale. No dec
       await base44.entities.Subject.update(subjectId, { dsp: newDsp, status: 'review' });
       // Invalidate cache so useEffect sees the saved DSP and won't re-trigger generation
       queryClient.invalidateQueries(['subject', subjectId]);
-      finishProcessing(subjectId);
+      // Call finishProcessing with clear message that DSP synthesis completed
+      finishProcessing(subjectId, 'DSP Synthesis Complete');
     } catch (error) {
       setGenerateError(error.message || 'DSP generation failed. Please retry.');
       failProcessing(subjectId);
@@ -165,7 +166,8 @@ CRITICAL: ALL scores and probabilities MUST be integers on a 0-100 scale. No dec
   useEffect(() => {
     if (!subject) return;
 
-    if (subject.dsp?.executive_summary) {
+    // Always load DSP if it exists, even partial
+    if (subject.dsp) {
       const loaded = subject.dsp;
       setDsp(prev => ({
         ...prev,
