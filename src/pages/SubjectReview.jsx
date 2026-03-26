@@ -79,8 +79,11 @@ export default function SubjectReview() {
       };
       const fileUrls = [
         ...(subject.stream_a_text || []),
+        ...(subject.stream_b_audio || []),
+        ...(subject.stream_c_video || []),
         ...(subject.stream_d_behavioral || []),
-      ].slice(0, 4);
+        ...(subject.stream_e_analog || []),
+      ].slice(0, 5);
 
       const response = await base44.integrations.Core.InvokeLLM({
         model: "claude_sonnet_4_6",
