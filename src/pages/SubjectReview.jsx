@@ -303,7 +303,7 @@ CRITICAL: ALL scores and probabilities MUST be integers on a 0-100 scale. No dec
           </button>
           <button
             onClick={generateDraftDSP}
-            disabled={isGenerating || !subject?.analysis_results}
+            disabled={isGenerating}
             style={{ ...glassBtnSecondary(t), padding: '9px 18px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 7 }}
           >
             {isGenerating ? <Loader2 style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} /> : <RefreshCw style={{ width: 14, height: 14 }} />}
