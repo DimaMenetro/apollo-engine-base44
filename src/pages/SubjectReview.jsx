@@ -45,7 +45,10 @@ export default function SubjectReview() {
   const subject = subjectData?.[0];
 
   const generateDraftDSP = async () => {
-    if (!subject?.analysis_results) return;
+    if (!subject?.analysis_results) {
+      setGenerateError('No analysis results found. Please run Processing first before generating the DSP.');
+      return;
+    }
     setIsGenerating(true);
     setGenerateError(null);
     startProcessing(subjectId, subject.name);
