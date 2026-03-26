@@ -51,7 +51,7 @@ export default function SubjectReview() {
     }
     setIsGenerating(true);
     setGenerateError(null);
-    startProcessing(subjectId, subject.name);
+    startProcessing(subjectId, subject.name, 'DSP Synthesis');
     updateProgress('DSP Synthesis in progress...', 10);
     try {
       const analysisContext = JSON.stringify(subject.analysis_results);
@@ -152,8 +152,7 @@ CRITICAL: ALL scores and probabilities MUST be integers on a 0-100 scale. No dec
       await base44.entities.Subject.update(subjectId, { dsp: newDsp, status: 'review' });
       // Invalidate cache so useEffect sees the saved DSP and won't re-trigger generation
       queryClient.invalidateQueries(['subject', subjectId]);
-      // Call finishProcessing with clear message that DSP synthesis completed
-      finishProcessing(subjectId, 'DSP Synthesis Complete');
+      finishProcessing(subjectId);
     } catch (error) {
       setGenerateError(error.message || 'DSP generation failed. Please retry.');
       failProcessing(subjectId);

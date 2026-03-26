@@ -19,16 +19,16 @@ const IDLE = {
 export function AccessoryProvider({ children }) {
   const [state, setState] = useState(IDLE);
 
-  const startProcessing = useCallback((subjectId, subjectName) => {
-    setState({ status: 'running', moduleTitle: '', progress: 0, subjectId, subjectName });
+  const startProcessing = useCallback((subjectId, subjectName, context = 'Processing') => {
+    setState({ status: 'running', moduleTitle: `${context}...`, progress: 0, subjectId, subjectName });
   }, []);
 
   const updateProgress = useCallback((moduleTitle, progress) => {
     setState((prev) => ({ ...prev, status: 'running', moduleTitle, progress }));
   }, []);
 
-  const finishProcessing = useCallback((subjectId, message) => {
-    setState((prev) => ({ ...prev, status: 'completed', progress: 100, subjectId, moduleTitle: message || prev.moduleTitle }));
+  const finishProcessing = useCallback((subjectId) => {
+    setState((prev) => ({ ...prev, status: 'completed', progress: 100, moduleTitle: prev.moduleTitle.replace('...', ' Complete') }));
     // Auto-dismiss after 3s
     setTimeout(() => setState(IDLE), 3000);
   }, []);
