@@ -105,8 +105,19 @@ Deno.serve(async (req) => {
     const predictions = humeResult.status === 'fulfilled' ? humeResult.value : null;
     const transcriptText = transcript.status === 'fulfilled' ? transcript.value : null;
 
-    if (humeResult.status === 'rejected') console.error('Hume failed:', humeResult.reason?.message);
-    if (transcript.status === 'rejected')  console.error('AssemblyAI failed:', transcript.reason?.message);
+    if (humeResult.status === 'rejected') {
+      console.error('Hume failed:', humeResult.reason?.message);
+      throw new Error(`Hume emotional analysis failed: ${humeResult.reason?.message}`);
+    }
+    if (transcript.status === 'rejected') {
+      console.error('AssemblyAI failed:', transcript.reason?.message);
+      throw new Error(`AssemblyAI transcription failed: ${transcript.reason?.message}`);
+    }
+
+    // Fatal: both services must return data for video processing
+    if (!predictions || !transcriptText) {
+      throw new Error(`Video processing incomplete: Hume returned ${predictions ? 'data' : 'null'}, AssemblyAI returned ${transcriptText ? 'data' : 'null'}`);
+    }
 
     return Response.json({
       predictions,
