@@ -126,7 +126,8 @@ CRITICAL: ALL scores and probabilities MUST be integers on a 0-100 scale. No dec
       const response = (typeof rawLLM === 'string') ? JSON.parse(rawLLM) : rawLLM;
 
       const today = new Date().toISOString().split('T')[0];
-      setDsp({
+      // Auto-save so the next load finds the DSP and doesn't re-generate
+      const newDsp = {
         document_id: `DSP-${subject.id?.slice(-6) || '000'}-CP-003-APL`,
         protocol_version: 'CP-003-O-D-APL v2.1',
         date_of_synthesis: today,
@@ -142,7 +143,10 @@ CRITICAL: ALL scores and probabilities MUST be integers on a 0-100 scale. No dec
         motivations: response.motivations || [],
         fears: response.fears || [],
         final_assessment: response.final_assessment || '',
-      });
+      };
+      setDsp(newDsp);
+      // Persist immediately so page reload / re-nav doesn't re-trigger generation
+      await base44.entities.Subject.update(subjectId, { dsp: newDsp, status: 'review' });
       finishProcessing(subjectId);
     } catch (error) {
       setGenerateError(error.message || 'DSP generation failed. Please retry.');
@@ -177,7 +181,7 @@ CRITICAL: ALL scores and probabilities MUST be integers on a 0-100 scale. No dec
 
   const updateMutation = useMutation({
     mutationFn: (data) => base44.entities.Subject.update(subjectId, data),
-    onSuccess: () => { queryClient.invalidateQueries(['subject', subjectId]); queryClient.invalidateQueries(['subjects']); },
+    onSuccess: () => { queryClient.invalidateQueries(['subjects']); },
   });
 
   const handleSaveDraft = async () => {
