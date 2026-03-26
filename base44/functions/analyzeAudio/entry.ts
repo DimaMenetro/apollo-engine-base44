@@ -36,7 +36,7 @@ async function transcribeWithAssembly(fileUrl) {
   const submitRes = await fetch(`${ASSEMBLY_API_URL}/transcript`, {
     method: 'POST',
     headers: { 'Authorization': ASSEMBLY_API_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ audio_url: fileUrl }),
+    body: JSON.stringify({ audio_url: fileUrl, speech_models: ['universal-3-pro'] }),
   });
   if (!submitRes.ok) throw new Error(`AssemblyAI v3 submit failed: ${await submitRes.text()}`);
   const { id } = await submitRes.json();
