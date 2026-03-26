@@ -118,13 +118,19 @@ Deno.serve(async (req) => {
     console.log('Hume result:', JSON.stringify(predictions, null, 2));
     console.log('AssemblyAI result:', transcriptText);
 
+    // Normalize Hume response structure
+    let humeData = predictions;
+    if (predictions && Array.isArray(predictions) && predictions[0]?.results?.predictions) {
+      humeData = predictions[0].results;
+    }
+
     // Fatal: both services must return data for video processing
-    if (!predictions || !transcriptText) {
-      throw new Error(`Video processing incomplete: Hume returned ${predictions ? 'data' : 'null'}, AssemblyAI returned ${transcriptText ? 'data' : 'null'}`);
+    if (!humeData || !transcriptText) {
+      throw new Error(`Video processing incomplete: Hume returned ${humeData ? 'data' : 'null'}, AssemblyAI returned ${transcriptText ? 'data' : 'null'}`);
     }
 
     return Response.json({
-      predictions,
+      predictions: humeData,
       transcript: transcriptText,
     }, {
       status: 200,
