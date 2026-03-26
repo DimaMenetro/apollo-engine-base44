@@ -86,7 +86,7 @@ export default function SubjectReview() {
       ].slice(0, 5);
 
       const response = await base44.integrations.Core.InvokeLLM({
-        model: "claude_sonnet_4_6",
+        model: "gemini_3_flash",
         file_urls: fileUrls.length > 0 ? fileUrls : undefined,
         prompt: `You are executing the Apollo Protocol (CP-003-O-D-APL v2.1) to generate a Definitive Subject Profile (DSP) for subject "${subject.name}".
 
