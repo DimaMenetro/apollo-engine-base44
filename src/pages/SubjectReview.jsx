@@ -24,6 +24,7 @@ export default function SubjectReview() {
 
   const [isEditing, setIsEditing] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState(null);
   const [dsp, setDsp] = useState({
     document_id: '', protocol_version: 'CP-003-O-D-APL v2.1', date_of_synthesis: '',
     confidence_score: 75, executive_summary: '', classification: '',
@@ -61,6 +62,7 @@ export default function SubjectReview() {
   const generateDraftDSP = async () => {
     if (!subject?.analysis_results) return;
     setIsGenerating(true);
+    setGenerateError(null);
     try {
       const analysisContext = JSON.stringify(subject.analysis_results);
       const traitSchema = {
@@ -152,6 +154,8 @@ CRITICAL: ALL scores and probabilities MUST be integers on a 0-100 scale. No dec
         fears: response.fears || [],
         final_assessment: response.final_assessment || '',
       });
+    } catch (error) {
+      setGenerateError(error.message || 'DSP generation failed. Please retry.');
     } finally {
       setIsGenerating(false);
     }
@@ -271,6 +275,14 @@ CRITICAL: ALL scores and probabilities MUST be integers on a 0-100 scale. No dec
           </button>
         </div>
       </div>
+
+      {/* Generation Error */}
+      {generateError && (
+        <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 10, background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.25)', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <AlertTriangle style={{ width: 14, height: 14, color: '#f43f5e', flexShrink: 0 }} />
+          <p style={{ fontSize: 13, color: '#f43f5e', margin: 0 }}>Generation failed: {generateError}</p>
+        </div>
+      )}
 
       {/* Conflicts */}
       {subject.conflicts_detected?.length > 0 && (
