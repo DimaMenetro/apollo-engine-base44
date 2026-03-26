@@ -194,7 +194,22 @@ export default function Processing() {
     }
 
     setConflicts(detectedConflicts);
-    await updateMutation.mutateAsync({ analysis_results: results, conflicts_detected: detectedConflicts, status: 'review' });
+
+    const completedModules = Object.keys(results);
+    if (completedModules.length === 0) {
+      setIsProcessing(false);
+      alert('No modules completed successfully. Check that your files are valid and try again.');
+      return;
+    }
+
+    try {
+      await updateMutation.mutateAsync({ analysis_results: results, conflicts_detected: detectedConflicts, status: 'review' });
+    } catch (saveError) {
+      setIsProcessing(false);
+      alert(`Analysis completed but failed to save: ${saveError.message}. Please try again.`);
+      return;
+    }
+
     setIsProcessing(false);
     finishProcessing(subjectId);
   };
