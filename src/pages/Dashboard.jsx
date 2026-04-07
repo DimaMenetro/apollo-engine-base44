@@ -30,7 +30,10 @@ export default function Dashboard() {
     total: subjects.length,
     processing: subjects.filter(s => s.status === 'processing').length,
     finalized: subjects.filter(s => s.status === 'finalized').length,
-    flagged: subjects.filter(s => s.conflicts_detected?.length > 0).length,
+    flagged: subjects.filter(s =>
+      (s.conflicts_detected?.length > 0) ||
+      (s.dsp_status === 'failed' || s.dsp_status === 'empty')
+    ).length,
   };
 
   const recentSubjects = subjects.slice(0, 6);

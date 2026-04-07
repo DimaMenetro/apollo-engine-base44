@@ -53,6 +53,8 @@ export default function SubjectReview() {
     setGenerateError(null);
     startProcessing(subjectId, subject.name, 'DSP Synthesis');
     updateProgress('DSP Synthesis in progress...', 10);
+    // Mark generating status
+    await base44.entities.Subject.update(subjectId, { dsp_status: 'generating' });
     try {
       const analysisContext = JSON.stringify(subject.analysis_results);
       const traitSchema = {
@@ -153,13 +155,34 @@ CRITICAL: ALL scores and probabilities MUST be integers on a 0-100 scale. No dec
         final_assessment: response.final_assessment || '',
       };
       setDsp(newDsp);
-      // Persist immediately so page reload / re-nav doesn't re-trigger generation
-      await base44.entities.Subject.update(subjectId, { dsp: newDsp, status: 'review' });
-      // Invalidate cache so useEffect sees the saved DSP and won't re-trigger generation
+      // Clear any previous dsp_integrity conflicts — they're no longer relevant after successful regen
+      const existingConflicts = subject.conflicts_detected || [];
+      const clearedConflicts = existingConflicts.filter(c => c.type !== 'dsp_integrity');
+      // Persist DSP + valid status + cleared conflicts
+      await base44.entities.Subject.update(subjectId, {
+        dsp: newDsp,
+        status: 'review',
+        dsp_status: 'valid',
+        conflicts_detected: clearedConflicts,
+      });
       queryClient.invalidateQueries(['subject', subjectId]);
       finishProcessing(subjectId);
     } catch (error) {
-      setGenerateError(error.message || 'DSP generation failed. Please retry.');
+      const errorMsg = error.message || 'DSP generation failed. Please retry.';
+      setGenerateError(errorMsg);
+      // Persist failure as a typed conflict + update dsp_status
+      const existingConflicts = subject.conflicts_detected || [];
+      const dspConflict = {
+        type: 'dsp_integrity',
+        description: `DSP generation failed: ${errorMsg}`,
+        timestamp: new Date().toISOString(),
+        resolution: 'Retry DSP generation or investigate analysis data quality',
+      };
+      await base44.entities.Subject.update(subjectId, {
+        dsp_status: 'failed',
+        conflicts_detected: [...existingConflicts.filter(c => c.type !== 'dsp_integrity'), dspConflict],
+      });
+      queryClient.invalidateQueries(['subject', subjectId]);
       failProcessing(subjectId);
     } finally {
       setIsGenerating(false);
