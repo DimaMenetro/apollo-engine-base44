@@ -13,7 +13,6 @@ import {
   GitBranch,
   Target,
   Shield,
-  Download,
   Lock,
   CheckCircle2,
   RefreshCw,
@@ -22,6 +21,7 @@ import {
 import EsotericOutputDisplay from '../components/esoteric/EsotericOutputDisplay';
 import PersonalityMatrix from '../components/review/PersonalityMatrix';
 import ActionResponseMatrix from '../components/review/ActionResponseMatrix';
+import ExportDropdown from '../components/export/ExportDropdown';
 import { format } from 'date-fns';
 import { formatDocumentId } from '../components/utils/formatDocumentId';
 
@@ -112,13 +112,12 @@ export default function DSPReport() {
             <RefreshCw style={{ width: 15, height: 15 }} />
             Regenerate
           </button>
-          <button
-            onClick={() => window.print()}
-            style={{ ...glassBtnSecondary(t), padding: '9px 20px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}
-          >
-            <Download style={{ width: 15, height: 15 }} />
-            Export
-          </button>
+          <ExportDropdown
+            subjectId={subjectId}
+            hasDSP={!!dsp?.executive_summary}
+            hasEsoteric={!!subject?.esoteric_profile?.execution_status}
+            defaultMode="dsp"
+          />
         </div>
       </div>
 

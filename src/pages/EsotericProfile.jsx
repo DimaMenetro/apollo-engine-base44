@@ -7,6 +7,7 @@ import { useTheme } from '../components/theme/ThemeProvider';
 import { light, dark, glassCard, glassBtn, glassBtnSecondary } from '../components/ui/LiquidGlass';
 import { ArrowLeft, Loader2, Star, RefreshCw, FileText, ToggleLeft, ToggleRight } from 'lucide-react';
 import EsotericOutputDisplay from '../components/esoteric/EsotericOutputDisplay';
+import ExportDropdown from '../components/export/ExportDropdown';
 
 const MODES = ['RETROSPECTIVE', 'PRESENT-STATE', 'PROSPECTIVE', 'FULL-CYCLE'];
 
@@ -136,23 +137,31 @@ export default function EsotericProfile() {
           </div>
         </div>
 
-        {/* Include in DSP toggle — only visible if a profile exists */}
+        {/* Actions — only visible if a profile exists */}
         {profile && (
-          <button
-            onClick={handleToggleIncludeInDSP}
-            disabled={updateMutation.isPending}
-            style={{
-              ...glassBtnSecondary(t), padding: '9px 18px', fontSize: 13,
-              display: 'flex', alignItems: 'center', gap: 8,
-              borderColor: includeInDSP ? 'rgba(139,92,246,0.45)' : undefined,
-            }}
-          >
-            {includeInDSP
-              ? <ToggleRight style={{ width: 16, height: 16, color: '#8b5cf6' }} />
-              : <ToggleLeft style={{ width: 16, height: 16, color: t.muted }} />
-            }
-            {includeInDSP ? 'Included in DSP' : 'Include in DSP'}
-          </button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button
+              onClick={handleToggleIncludeInDSP}
+              disabled={updateMutation.isPending}
+              style={{
+                ...glassBtnSecondary(t), padding: '9px 18px', fontSize: 13,
+                display: 'flex', alignItems: 'center', gap: 8,
+                borderColor: includeInDSP ? 'rgba(139,92,246,0.45)' : undefined,
+              }}
+            >
+              {includeInDSP
+                ? <ToggleRight style={{ width: 16, height: 16, color: '#8b5cf6' }} />
+                : <ToggleLeft style={{ width: 16, height: 16, color: t.muted }} />
+              }
+              {includeInDSP ? 'Included in DSP' : 'Include in DSP'}
+            </button>
+            <ExportDropdown
+              subjectId={subjectId}
+              hasDSP={!!subject?.dsp?.executive_summary}
+              hasEsoteric={!!profile?.execution_status}
+              defaultMode="esoteric"
+            />
+          </div>
         )}
       </div>
 
