@@ -16,12 +16,14 @@ const tabs = [
 ];
 
 const PAGE_TO_TAB = {
-  Dashboard:     'Dashboard',
-  SubjectIntake: 'SubjectIntake',
-  Processing:    'Processing',
-  Reports:       'Reports',
-  SubjectReview: 'Reports',
-  DSPReport:     'Reports',
+  Dashboard:       'Dashboard',
+  SubjectIntake:   'SubjectIntake',
+  Processing:      'Processing',
+  Reports:         'Reports',
+  SubjectReview:   'Reports',
+  DSPReport:       'Reports',
+  EsotericProfile: 'Reports',
+  UnifiedDossier:  'Reports',
 };
 
 export default function GlassTabBar({ currentPageName }) {

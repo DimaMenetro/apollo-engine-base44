@@ -161,12 +161,14 @@ export default function ExportPreviewModal({ subjectId, mode, modeLabel, initial
             <button
               onClick={onClose}
               style={{
-                width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer',
+                width: 32, height: 32, borderRadius: '50%',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 background: 'transparent', color: t.muted,
               }}
             >
-              <X style={{ width: 16, height: 16 }} />
+              <X style={{ width: 14, height: 14 }} />
             </button>
           </div>
         </div>

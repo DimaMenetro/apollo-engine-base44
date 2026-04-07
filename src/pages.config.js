@@ -54,6 +54,7 @@ import Reports from './pages/Reports';
 import SubjectIntake from './pages/SubjectIntake';
 import SubjectReview from './pages/SubjectReview';
 import EsotericProfile from './pages/EsotericProfile';
+import UnifiedDossier from './pages/UnifiedDossier';
 import __Layout from './Layout.jsx';
 
 
@@ -65,6 +66,7 @@ export const PAGES = {
     "SubjectIntake": SubjectIntake,
     "SubjectReview": SubjectReview,
     "EsotericProfile": EsotericProfile,
+    "UnifiedDossier": UnifiedDossier,
 }
 
 export const pagesConfig = {

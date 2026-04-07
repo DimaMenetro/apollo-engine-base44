@@ -1,19 +1,20 @@
 import React, { useRef, useState, useLayoutEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Activity, FileCheck, Star, ClipboardEdit } from 'lucide-react';
+import { Activity, FileCheck, Star, ClipboardEdit, Layers } from 'lucide-react';
 import { useTheme } from '../theme/ThemeProvider';
 import { light, dark, glassTabBar, glassTabActive } from './LiquidGlass';
 import { createPageUrl } from '../../utils';
 
 // Pages that belong to the "subject detail" context
-const SUBJECT_PAGES = ['SubjectReview', 'Processing', 'EsotericProfile', 'DSPReport'];
+const SUBJECT_PAGES = ['SubjectReview', 'Processing', 'EsotericProfile', 'DSPReport', 'UnifiedDossier'];
 
 const tabs = [
   { name: 'Review',     page: 'SubjectReview',   icon: ClipboardEdit },
   { name: 'Processing', page: 'Processing',       icon: Activity      },
   { name: 'Esoteric',   page: 'EsotericProfile',  icon: Star          },
   { name: 'Report',     page: 'DSPReport',        icon: FileCheck     },
+  { name: 'Dossier',    page: 'UnifiedDossier',   icon: Layers        },
 ];
 
 export default function SubjectTopNav({ currentPageName }) {
