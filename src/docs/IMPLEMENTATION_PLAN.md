@@ -13,10 +13,10 @@
 | 2 | Esoteric Profile Visual Aids | ✅ DONE | 2026-04 |
 | 2a | Text ↔ Visual Toggle System | ✅ DONE | 2026-04 |
 | 2b | Dual-Node Chart (Alpha/Beta/Overlay) | ✅ DONE | 2026-04 |
-| 3 | Unified Dossier Synthesis Engine | 🔲 NEXT | — |
-| 3a | Entity schema update (unified_dossier field) | 🔲 PENDING | — |
-| 3b | Backend: synthesizeDossier.js | 🔲 PENDING | — |
-| 3c | Rebuild UnifiedDossier page | 🔲 PENDING | — |
+| 3 | Unified Dossier Synthesis Engine | 🔄 IN PROGRESS | — |
+| 3a | Entity schema update (unified_dossier field) | ✅ DONE | 2026-04-07 |
+| 3b | Backend: synthesizeDossier.js | ✅ DONE | 2026-04-07 |
+| 3c | Rebuild UnifiedDossier page | 🔲 NEXT | — |
 | 3d | Composite visuals for merged data | 🔲 PENDING | — |
 | 3e | Export update (merged mode uses synthesis) | 🔲 PENDING | — |
 

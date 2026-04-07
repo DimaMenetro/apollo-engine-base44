@@ -406,6 +406,118 @@
         }
       }
     },
+    "unified_dossier": {
+      "type": "object",
+      "description": "LLM-synthesized unified dossier \u2014 arbitrated merge of DSP and Esoteric Profile into a single-voice document",
+      "properties": {
+        "date_synthesized": {
+          "type": "string",
+          "description": "ISO date when synthesis was performed"
+        },
+        "dsp_source_date": {
+          "type": "string",
+          "description": "DSP date_of_synthesis at time of merge \u2014 for staleness detection"
+        },
+        "esoteric_source_date": {
+          "type": "string",
+          "description": "Esoteric date_executed at time of merge \u2014 for staleness detection"
+        },
+        "unified_identity_portrait": {
+          "type": "string",
+          "description": "Merged executive summary + inquiry frame + unified emotional synthesis"
+        },
+        "psychodynamic_architecture": {
+          "type": "string",
+          "description": "Merged cognitive architecture + astrological interpretation"
+        },
+        "personality_archetypal_resonance": {
+          "type": "string",
+          "description": "Merged personality matrix + numerological interpretation"
+        },
+        "behavioral_topology": {
+          "type": "string",
+          "description": "Merged behavioral patterns + threshold assessment"
+        },
+        "predictive_convergence_model": {
+          "type": "string",
+          "description": "Merged action/response matrix + strategic translation"
+        },
+        "core_drivers_shadow": {
+          "type": "string",
+          "description": "Merged motivations/fears + limitation statement"
+        },
+        "convergence_map": {
+          "type": "object",
+          "description": "Explicit convergence/divergence analysis between the two lenses",
+          "properties": {
+            "convergence_points": {
+              "type": "array",
+              "description": "Where DSP and Esoteric independently agree",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "domain": {
+                    "type": "string"
+                  },
+                  "dsp_evidence": {
+                    "type": "string"
+                  },
+                  "esoteric_evidence": {
+                    "type": "string"
+                  },
+                  "significance": {
+                    "type": "string"
+                  },
+                  "confidence": {
+                    "type": "number"
+                  }
+                }
+              }
+            },
+            "divergence_points": {
+              "type": "array",
+              "description": "Where DSP and Esoteric see different things",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "domain": {
+                    "type": "string"
+                  },
+                  "dsp_position": {
+                    "type": "string"
+                  },
+                  "esoteric_position": {
+                    "type": "string"
+                  },
+                  "arbitration": {
+                    "type": "string"
+                  },
+                  "tension_value": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "overall_alignment_score": {
+              "type": "number",
+              "description": "0-100 representing how aligned the two lenses are"
+            }
+          }
+        },
+        "final_unified_assessment": {
+          "type": "string",
+          "description": "The single-voice definitive portrait"
+        },
+        "synthesis_confidence": {
+          "type": "number",
+          "description": "0-100 confidence in the synthesis quality"
+        },
+        "synthesis_methodology_note": {
+          "type": "string",
+          "description": "Brief note on how the synthesis was conducted"
+        }
+      }
+    },
     "operator_notes": {
       "type": "string",
       "description": "Operator refinement notes"
