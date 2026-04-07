@@ -62,15 +62,10 @@ export default function SubjectReview() {
       );
       const analysisContext = JSON.stringify(filteredResults);
 
-      // Truncate analysis context if too large (>8000 chars) to avoid overwhelming the model
-      const truncatedContext = analysisContext.length > 8000
-        ? analysisContext.substring(0, 8000) + '...[truncated]'
-        : analysisContext;
-
       const dspPrompt = `Generate a Definitive Subject Profile (DSP) for "${subject.name}" based on analysis data below. Return a JSON object with ALL these fields populated with substantive content.
 
 ANALYSIS DATA:
-${truncatedContext}
+${analysisContext}
 
 REQUIRED OUTPUT FIELDS:
 - executive_summary: 3-5 paragraph synthesis of core psychology
@@ -104,35 +99,11 @@ Be thorough, specific, and analytical. Ground every claim in evidence. All score
         }
       };
 
-      // Try Claude first, fall back to GPT-5 if it returns empty
-      const models = ["claude_sonnet_4_6", "gpt_5"];
-      let rawLLM = null;
-      let lastError = null;
-
-      for (const model of models) {
-        updateProgress(`${model === 'claude_sonnet_4_6' ? 'Claude Sonnet' : 'GPT-5'} synthesizing profile...`, model === models[0] ? 30 : 55);
-        try {
-          rawLLM = await base44.integrations.Core.InvokeLLM({
-            model,
-            prompt: dspPrompt,
-            response_json_schema: dspSchema,
-          });
-          // Check if we got substantive data
-          const check = (typeof rawLLM === 'string') ? JSON.parse(rawLLM) : rawLLM;
-          if (check.executive_summary || check.classification || check.final_assessment) {
-            break; // Success — use this response
-          }
-          lastError = `${model} returned empty data`;
-          rawLLM = null; // Reset so we try next model
-        } catch (e) {
-          lastError = `${model}: ${e.message}`;
-          rawLLM = null;
-        }
-      }
-
-      if (!rawLLM) {
-        throw new Error(lastError || 'All models failed to generate profile data. Please retry.');
-      }
+      updateProgress('Synthesizing profile...', 30);
+      const rawLLM = await base44.integrations.Core.InvokeLLM({
+        prompt: dspPrompt,
+        response_json_schema: dspSchema,
+      });
 
       updateProgress('Structuring DSP output...', 80);
       // InvokeLLM with response_json_schema returns the object directly
