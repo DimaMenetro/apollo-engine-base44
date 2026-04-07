@@ -56,7 +56,11 @@ export default function SubjectReview() {
     // Mark generating status
     await base44.entities.Subject.update(subjectId, { dsp_status: 'generating' });
     try {
-      const analysisContext = JSON.stringify(subject.analysis_results);
+      // Filter out null/empty analysis modules to reduce noise and token waste
+      const filteredResults = Object.fromEntries(
+        Object.entries(subject.analysis_results).filter(([, v]) => v != null)
+      );
+      const analysisContext = JSON.stringify(filteredResults);
       const traitSchema = {
         type: "object",
         properties: {
@@ -132,7 +136,8 @@ CRITICAL: ALL scores and probabilities MUST be integers on a 0-100 scale. No dec
 
       // Validate that the LLM actually returned substantive content
       if (!response.executive_summary && !response.classification && !response.final_assessment) {
-        throw new Error('LLM returned empty profile data. The model may have failed silently. Please retry.');
+        const keys = Object.keys(response).filter(k => response[k]);
+        throw new Error(`LLM returned empty profile data (populated keys: ${keys.length ? keys.join(', ') : 'none'}). Please retry — this is usually a transient model issue.`);
       }
 
       const today = new Date().toISOString().split('T')[0];
