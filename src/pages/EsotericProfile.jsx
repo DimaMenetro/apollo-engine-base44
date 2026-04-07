@@ -258,7 +258,7 @@ export default function EsotericProfile() {
                 {profile.date_executed}
               </span>
             </div>
-            <EsotericOutputDisplay profile={profile} />
+            <EsotericOutputDisplay profile={profile} esotericInputs={subject.esoteric_inputs} />
           </div>
         )}
 

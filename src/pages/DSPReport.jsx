@@ -347,7 +347,7 @@ export default function DSPReport() {
                 <p style={{ fontSize: 10, color: t.muted, margin: '2px 0 0', fontFamily: 'monospace' }}>CP-012-O-D-ESP</p>
               </div>
             </div>
-            <EsotericOutputDisplay profile={subject.esoteric_profile} />
+            <EsotericOutputDisplay profile={subject.esoteric_profile} esotericInputs={subject.esoteric_inputs} />
           </div>
         )}
 
