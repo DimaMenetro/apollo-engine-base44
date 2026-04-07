@@ -1,12 +1,21 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTheme } from '../theme/ThemeProvider';
 import { light, dark } from '../ui/LiquidGlass';
-import { CheckCircle2, XCircle, Star } from 'lucide-react';
 import FidelityMeter from './FidelityMeter';
 import ThresholdPhaseArc from './ThresholdPhaseArc';
-import NodeConvergenceRadar from './NodeConvergenceRadar';
 import CycleTimeline from './CycleTimeline';
 import ValidationDashboard from './ValidationDashboard';
+import DualNodeChart from './DualNodeChart';
+import SectionViewToggle from './SectionViewToggle';
+
+/**
+ * Sections that have a paired visual aid.
+ * key → visual component rendered when mode === 'visual'
+ */
+const VISUAL_MAP = {
+  threshold_assessment: true,
+  numerological_interpretation: true,
+};
 
 const SECTIONS = [
   { key: 'inquiry_frame',              label: 'Esoteric Inquiry Frame',       color: '#8b5cf6' },
@@ -22,15 +31,10 @@ export default function EsotericOutputDisplay({ profile, esotericInputs }) {
   const { isDark } = useTheme();
   const t = isDark ? dark : light;
 
-  const validation = profile.sme_validation || {};
-  const validationItems = [
-    ['Astrology governed timing',     validation.astrology_governed_timing],
-    ['Numerology governed structure', validation.numerology_governed_structure],
-    ['Emotional depth prioritized',   validation.emotional_depth_prioritized],
-    ['Practical translation achieved',validation.practical_translation_achieved],
-    ['Generic horoscope drift avoided',validation.generic_horoscope_drift_avoided],
-  ];
-  const isCompliant = validation.execution_status === 'COMPLIANT';
+  // Per-section view mode state: 'text' (default) or 'visual'
+  const [viewModes, setViewModes] = useState({});
+  const getMode = (key) => viewModes[key] || 'text';
+  const setMode = (key, mode) => setViewModes(prev => ({ ...prev, [key]: mode }));
 
   const cardStyle = (accentColor) => ({
     padding: 20,
@@ -42,23 +46,33 @@ export default function EsotericOutputDisplay({ profile, esotericInputs }) {
     borderLeft: `3px solid ${accentColor}`,
   });
 
+  const hasNodes = profile.astrological_interpretation && profile.numerological_interpretation;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Fidelity Meter — replaces old execution header */}
+      {/* Fidelity Meter */}
       <FidelityMeter
         fidelity={profile.input_fidelity}
         executionStatus={profile.execution_status}
         dateExecuted={profile.date_executed}
       />
 
-      {/* Content Sections — with visual aids injected at strategic points */}
+      {/* Content Sections — with text ↔ visual toggle on sections that have paired visuals */}
       {SECTIONS.map(({ key, label, color, tag }) => {
         const content = profile[key];
         if (!content) return null;
+
+        const hasVisual = VISUAL_MAP[key];
+        const mode = getMode(key);
+
+        // Skip individual Alpha/Beta cards when Dual Node Chart is showing
+        // (they're already inside DualNodeChart)
+        // — but only when user is in text mode; the cards still render for text reading
         return (
           <React.Fragment key={key}>
             <div style={cardStyle(color)}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              {/* Header row — label + optional toggle */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color }}>
                   {label}
                 </span>
@@ -70,36 +84,45 @@ export default function EsotericOutputDisplay({ profile, esotericInputs }) {
                     {tag}
                   </span>
                 )}
+                {hasVisual && (
+                  <div style={{ marginLeft: 'auto' }}>
+                    <SectionViewToggle mode={mode} onToggle={(m) => setMode(key, m)} />
+                  </div>
+                )}
               </div>
-              <p style={{ fontSize: 13, color: t.text, lineHeight: 1.75, whiteSpace: 'pre-wrap', margin: 0 }}>{content}</p>
+
+              {/* Content — text or visual based on mode */}
+              {mode === 'text' ? (
+                <p style={{ fontSize: 13, color: t.text, lineHeight: 1.75, whiteSpace: 'pre-wrap', margin: 0 }}>{content}</p>
+              ) : (
+                /* Inline visual for this section */
+                <>
+                  {key === 'threshold_assessment' && (
+                    <ThresholdPhaseArc thresholdText={profile.threshold_assessment} />
+                  )}
+                  {key === 'numerological_interpretation' && (
+                    <CycleTimeline
+                      numText={profile.numerological_interpretation}
+                      dateOfBirth={esotericInputs?.date_of_birth}
+                      timeframe={esotericInputs?.timeframe}
+                    />
+                  )}
+                </>
+              )}
             </div>
 
-            {/* Visual aid: Node Convergence Radar — after Node Beta (numerology), before synthesis */}
-            {key === 'numerological_interpretation' && profile.astrological_interpretation && (
-              <NodeConvergenceRadar
+            {/* Dual Node Chart — appears after Node Beta, always visible when both nodes exist */}
+            {key === 'numerological_interpretation' && hasNodes && (
+              <DualNodeChart
                 astroText={profile.astrological_interpretation}
                 numText={profile.numerological_interpretation}
               />
-            )}
-
-            {/* Visual aid: Cycle Timeline — after numerology section */}
-            {key === 'numerological_interpretation' && (
-              <CycleTimeline
-                numText={profile.numerological_interpretation}
-                dateOfBirth={esotericInputs?.date_of_birth}
-                timeframe={esotericInputs?.timeframe}
-              />
-            )}
-
-            {/* Visual aid: Threshold Phase Arc — after threshold assessment */}
-            {key === 'threshold_assessment' && (
-              <ThresholdPhaseArc thresholdText={profile.threshold_assessment} />
             )}
           </React.Fragment>
         );
       })}
 
-      {/* SME Validation Dashboard — visual gauge version */}
+      {/* SME Validation Dashboard */}
       {profile.sme_validation && (
         <ValidationDashboard validation={profile.sme_validation} />
       )}
