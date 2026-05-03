@@ -54,7 +54,7 @@ import Reports from './pages/Reports';
 import SubjectIntake from './pages/SubjectIntake';
 import SubjectReview from './pages/SubjectReview';
 import EsotericProfile from './pages/EsotericProfile';
-import UnifiedDossier from './pages/UnifiedDossier';
+import UnifiedDossier from './pages/UnifiedDossier.jsx';
 import __Layout from './Layout.jsx';
 
 

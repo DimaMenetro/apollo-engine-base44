@@ -16,8 +16,8 @@
 | 3 | Unified Dossier Synthesis Engine | 🔄 IN PROGRESS | — |
 | 3a | Entity schema update (unified_dossier field) | ✅ DONE | 2026-04-07 |
 | 3b | Backend: synthesizeDossier.js | ✅ DONE | 2026-04-07 |
-| 3c | Rebuild UnifiedDossier page | 🔲 NEXT | — |
-| 3d | Composite visuals for merged data | 🔲 PENDING | — |
+| 3c | Rebuild UnifiedDossier page | ✅ DONE | 2026-05-03 |
+| 3d | Composite visuals for merged data | 🔲 NEXT | — |
 | 3e | Export update (merged mode uses synthesis) | 🔲 PENDING | — |
 
 ---
@@ -176,6 +176,10 @@ Apps studied: Co-Star, The Pattern, Sanctuary, CHANI, Selfgazer, SoularMap, Astr
 | DossierHeader | `components/dossier/DossierHeader` | Dossier |
 | DossierDSPSection | `components/dossier/DossierDSPSection` | Dossier |
 | DossierEsotericSection | `components/dossier/DossierEsotericSection` | Dossier |
+| SynthesizedSection | `components/dossier/SynthesizedSection` | Dossier/Synthesis |
+| ConvergenceMap | `components/dossier/ConvergenceMap` | Dossier/Synthesis |
+| StalenessIndicator | `components/dossier/StalenessIndicator` | Dossier/Synthesis |
+| SynthesisConfidenceMeter | `components/dossier/SynthesisConfidenceMeter` | Dossier/Synthesis |
 
 ---
 

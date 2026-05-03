@@ -7,7 +7,7 @@ import { ArrowLeft, Layers, Lock, CheckCircle2 } from 'lucide-react';
 import ExportDropdown from '../export/ExportDropdown';
 import { formatDocumentId } from '../utils/formatDocumentId';
 
-export default function DossierHeader({ subject, subjectId, hasDSP, hasEsoteric }) {
+export default function DossierHeader({ subject, subjectId, hasDSP, hasEsoteric, hasSynthesis, unifiedDossier }) {
   const navigate = useNavigate();
   const { isDark } = useTheme();
   const t = isDark ? dark : light;
@@ -83,6 +83,18 @@ export default function DossierHeader({ subject, subjectId, hasDSP, hasEsoteric 
                   }}>
                     <CheckCircle2 style={{ width: 10, height: 10 }} />
                     CP-012 ATTACHED
+                  </span>
+                )}
+                {hasSynthesis && (
+                  <span style={{
+                    fontSize: 11, fontWeight: 600, letterSpacing: '0.08em',
+                    padding: '4px 10px', borderRadius: 999,
+                    background: 'rgba(16,185,129,0.12)', color: '#10b981',
+                    border: '1px solid rgba(16,185,129,0.25)',
+                    display: 'flex', alignItems: 'center', gap: 5,
+                  }}>
+                    <CheckCircle2 style={{ width: 10, height: 10 }} />
+                    SYNTHESIZED
                   </span>
                 )}
               </div>
