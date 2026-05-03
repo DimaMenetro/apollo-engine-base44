@@ -183,30 +183,10 @@ Apps studied: Co-Star, The Pattern, Sanctuary, CHANI, Selfgazer, SoularMap, Astr
 
 ---
 
-## KYTHEION OPERATIONAL SAFEGUARDS
+---
 
-**These are hard procedural rules, not aspirational lessons. Follow them mechanically every time.**
-
-### File Operations
-1. **Before writing to ANY file path:** Read it first (or confirm it exists in context-snapshot). No exceptions. The file system is the ground truth, not your assumptions about it.
-2. **Never delete + recreate a file to "fix" it.** Use `find_replace` on the existing path. Deleting creates orphan references and import breakage.
-3. **Never change a file extension** (e.g. extensionless → `.jsx`). Base44 pages use extensionless paths. `pages.config.js` imports match the existing path exactly. Changing extensions breaks the import chain.
-4. **One operation per file edit.** If a file needs content changes, use `find_replace` on its current path. If a file doesn't exist yet, use `write_file` once. Never chain delete → create as a substitute for editing.
-
-### Import & Routing Integrity
-5. **Never touch `pages.config.js` imports** unless explicitly asked to add/remove a page. The import paths there are already correct.
-6. **When adding a NEW page:** Add a `<Route>` in `App.jsx` alongside the existing pagesConfig loop. Wrap it in `<LayoutWrapper>` to match existing pages.
-
-### Communication
-7. **Don't narrate learning you can't retain.** If a mistake happened, state what the correct procedure is — don't promise behavioral change across sessions. This safeguards section IS the behavioral change mechanism.
-8. **Don't apologize performatively.** Acknowledge, state the correct procedure, execute.
-
-### Pre-Flight Checklist (Before ANY Implementation)
-- [ ] Read `docs/IMPLEMENTATION_PLAN.md` for current state
-- [ ] Verify target file paths exist and match import references
-- [ ] Confirm the scope of changes — what moves, what stays untouched
-- [ ] If editing existing files: use `find_replace`, not `write_file`
+**⚠️ BEFORE ANY WORK: Read `docs/KYTHEION_OPERATING_DIRECTIVES.md` first. It contains hard procedural rules and an incident log that survives across sessions.**
 
 ---
 
-*This document is the source of truth for implementation state AND operational procedures. Update it whenever a phase completes, a new phase is approved, or a new procedural safeguard is identified.*
+*This document is the source of truth for implementation state. Update it whenever a phase completes or a new phase is approved.*
