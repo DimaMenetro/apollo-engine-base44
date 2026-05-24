@@ -17,8 +17,8 @@
 | 3a | Entity schema update (unified_dossier field) | ✅ DONE | 2026-04-07 |
 | 3b | Backend: synthesizeDossier.js | ✅ DONE | 2026-04-07 |
 | 3c | Rebuild UnifiedDossier page | ✅ DONE | 2026-05-03 |
-| 3d | Composite visuals for merged data | 🔲 NEXT | — |
-| 3e | Export update (merged mode uses synthesis) | 🔲 PENDING | — |
+| 3d | Composite visuals for merged data | ✅ DONE | 2026-05-24 |
+| 3e | Export update (merged mode uses synthesis) | 🔲 NEXT | — |
 
 ---
 
@@ -119,11 +119,12 @@ Add `unified_dossier` field to Subject entity:
 - Each section shows unified narrative
 - Convergence/Divergence map as a dedicated visual section
 
-### Step 3d: Composite Visuals
-- Convergence/Divergence radar (overlay empirical + symbolic scores)
-- Combined personality-archetypal resonance chart
-- Unified timeline (DSP behavioral patterns + Esoteric cycle positions)
-- Synthesis confidence indicator
+### Step 3d: Composite Visuals ✅
+- **ConvergenceRadar** — Recharts radar overlaying per-domain agreement (confidence) and tension (from divergence severity) on shared axes. Data from `unified_dossier.convergence_map`.
+- **PersonalityArchetypalChart** — Side-by-side bar chart: Big Five scores (DSP) vs. archetypal resonance (keyword-heuristic from esoteric numerological interpretation). Shows alignment delta per trait.
+- **UnifiedTimeline** — Conceptual timeline with esoteric threshold phase marker, observed behavioral patterns (left column), and predicted trajectories from action/response matrix (right column).
+- **SynthesisConfidenceMeter** — Already existed from 3c. No changes needed.
+- All three new visuals placed on UnifiedDossier page between confidence meter and narrative sections. All return `null` gracefully on missing data.
 
 ### Step 3e: Export Update
 - "merged" mode in exportDSP.js renders unified_dossier data
@@ -180,6 +181,9 @@ Apps studied: Co-Star, The Pattern, Sanctuary, CHANI, Selfgazer, SoularMap, Astr
 | ConvergenceMap | `components/dossier/ConvergenceMap` | Dossier/Synthesis |
 | StalenessIndicator | `components/dossier/StalenessIndicator` | Dossier/Synthesis |
 | SynthesisConfidenceMeter | `components/dossier/SynthesisConfidenceMeter` | Dossier/Synthesis |
+| ConvergenceRadar | `components/dossier/ConvergenceRadar` | Dossier/Synthesis (3d) |
+| PersonalityArchetypalChart | `components/dossier/PersonalityArchetypalChart` | Dossier/Synthesis (3d) |
+| UnifiedTimeline | `components/dossier/UnifiedTimeline` | Dossier/Synthesis (3d) |
 
 ---
 

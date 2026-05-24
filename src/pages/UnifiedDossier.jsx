@@ -11,6 +11,9 @@ import SynthesizedSection from '../components/dossier/SynthesizedSection';
 import ConvergenceMap from '../components/dossier/ConvergenceMap';
 import StalenessIndicator from '../components/dossier/StalenessIndicator';
 import SynthesisConfidenceMeter from '../components/dossier/SynthesisConfidenceMeter';
+import ConvergenceRadar from '../components/dossier/ConvergenceRadar';
+import PersonalityArchetypalChart from '../components/dossier/PersonalityArchetypalChart';
+import UnifiedTimeline from '../components/dossier/UnifiedTimeline';
 import { useAccessory } from '../components/ui/AccessoryContext';
 
 export default function UnifiedDossier() {
@@ -155,6 +158,18 @@ export default function UnifiedDossier() {
                 methodologyNote={unifiedDossier.synthesis_methodology_note}
               />
             )}
+
+            {/* Phase 3d — Composite Visuals */}
+            <ConvergenceRadar convergenceMap={unifiedDossier.convergence_map} />
+            <PersonalityArchetypalChart
+              personalityMatrix={dsp?.personality_matrix}
+              numText={esotericProfile?.numerological_interpretation}
+            />
+            <UnifiedTimeline
+              behavioralPatterns={dsp?.behavioral_patterns}
+              thresholdAssessment={esotericProfile?.threshold_assessment}
+              actionResponseMatrix={dsp?.action_response_matrix}
+            />
 
             {/* Narrative sections */}
             {SECTIONS.map(({ key, title, icon, accent }) => (
