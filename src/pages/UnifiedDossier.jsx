@@ -226,7 +226,7 @@ export default function UnifiedDossier() {
             )}
 
             {hasDSP && <DossierDSPSection subject={subject} dsp={dsp} />}
-            {hasEsoteric && <DossierEsotericSection subject={subject} esotericProfile={esotericProfile} />}
+            {hasEsoteric && <DossierEsotericSection esp={esotericProfile} esotericInputs={subject?.esoteric_inputs} />}
           </>
         )}
       </div>

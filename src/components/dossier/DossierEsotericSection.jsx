@@ -4,7 +4,7 @@ import { light, dark, glassCard } from '../ui/LiquidGlass';
 import { Star } from 'lucide-react';
 import EsotericOutputDisplay from '../esoteric/EsotericOutputDisplay';
 
-export default function DossierEsotericSection({ esp }) {
+export default function DossierEsotericSection({ esp, esotericInputs }) {
   const { isDark } = useTheme();
   const t = isDark ? dark : light;
 
@@ -19,7 +19,7 @@ export default function DossierEsotericSection({ esp }) {
           <p style={{ fontSize: 10, color: t.muted, margin: '2px 0 0', fontFamily: 'monospace' }}>CP-012-O-D-ESP</p>
         </div>
       </div>
-      <EsotericOutputDisplay profile={esp} />
+      <EsotericOutputDisplay profile={esp} esotericInputs={esotericInputs} />
     </div>
   );
 }

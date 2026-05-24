@@ -36,6 +36,8 @@ export default function EsotericOutputDisplay({ profile, esotericInputs }) {
   const getMode = (key) => viewModes[key] || 'text';
   const setMode = (key, mode) => setViewModes(prev => ({ ...prev, [key]: mode }));
 
+  if (!profile) return null;
+
   const cardStyle = (accentColor) => ({
     padding: 20,
     borderRadius: 16,
