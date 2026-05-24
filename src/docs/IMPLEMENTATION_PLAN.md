@@ -1,6 +1,6 @@
 # Apollo Profiling Engine — Master Implementation Plan
 ## Document ID: IP-001-G-D-APL
-## Last Updated: 2026-04-07
+## Last Updated: 2026-05-24
 ## Status: ACTIVE
 
 ---
@@ -13,12 +13,12 @@
 | 2 | Esoteric Profile Visual Aids | ✅ DONE | 2026-04 |
 | 2a | Text ↔ Visual Toggle System | ✅ DONE | 2026-04 |
 | 2b | Dual-Node Chart (Alpha/Beta/Overlay) | ✅ DONE | 2026-04 |
-| 3 | Unified Dossier Synthesis Engine | 🔄 IN PROGRESS | — |
+| 3 | Unified Dossier Synthesis Engine | ✅ DONE | 2026-05-24 |
 | 3a | Entity schema update (unified_dossier field) | ✅ DONE | 2026-04-07 |
 | 3b | Backend: synthesizeDossier.js | ✅ DONE | 2026-04-07 |
 | 3c | Rebuild UnifiedDossier page | ✅ DONE | 2026-05-03 |
 | 3d | Composite visuals for merged data | ✅ DONE | 2026-05-24 |
-| 3e | Export update (merged mode uses synthesis) | 🔲 NEXT | — |
+| 3e | Export update (merged mode uses synthesis) | ✅ DONE | 2026-05-24 |
 
 ---
 
@@ -126,10 +126,12 @@ Add `unified_dossier` field to Subject entity:
 - **SynthesisConfidenceMeter** — Already existed from 3c. No changes needed.
 - All three new visuals placed on UnifiedDossier page between confidence meter and narrative sections. All return `null` gracefully on missing data.
 
-### Step 3e: Export Update
-- "merged" mode in exportDSP.js renders unified_dossier data
-- Falls back to concatenation if synthesis hasn't been run yet
-- PDF includes both narrative sections and static visual equivalents (bars, arcs drawn as PDF primitives)
+### Step 3e: Export Update ✅
+- "merged" mode in exportDSP.js renders unified_dossier data when synthesis exists
+- Falls back to concatenation if synthesis hasn't been run yet (legacy behavior preserved)
+- PDF includes: synthesis confidence arc, convergence/divergence map with alignment bar, 6 narrative sections, final unified assessment
+- ExportDropdown label dynamically shows "Unified Dossier" vs "Full Dossier (Legacy)" based on synthesis state
+- All 4 export scenarios tested: synthesized merged, legacy merged, DSP-only, esoteric-only — all 200 OK
 
 ### Risk Mitigations
 | Risk | Mitigation |

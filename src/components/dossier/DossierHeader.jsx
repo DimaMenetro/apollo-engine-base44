@@ -50,6 +50,7 @@ export default function DossierHeader({ subject, subjectId, hasDSP, hasEsoteric,
           subjectId={subjectId}
           hasDSP={hasDSP}
           hasEsoteric={hasEsoteric}
+          hasUnified={hasSynthesis}
           defaultMode="merged"
         />
       </div>

@@ -8,7 +8,7 @@ import ExportPreviewModal from './ExportPreviewModal';
  * ExportDropdown — reusable export button with mode selection.
  * Clicking a mode opens a preview modal with theme toggle before download.
  */
-export default function ExportDropdown({ subjectId, hasDSP, hasEsoteric, defaultMode = 'dsp' }) {
+export default function ExportDropdown({ subjectId, hasDSP, hasEsoteric, hasUnified, defaultMode = 'dsp' }) {
   const { isDark } = useTheme();
   const t = isDark ? dark : light;
   const [open, setOpen] = useState(false);
@@ -34,7 +34,7 @@ export default function ExportDropdown({ subjectId, hasDSP, hasEsoteric, default
   const modes = [];
   if (hasDSP) modes.push({ key: 'dsp', label: 'DSP Report', icon: FileText, color: '#f59e0b' });
   if (hasEsoteric) modes.push({ key: 'esoteric', label: 'Esoteric Profile', icon: Star, color: '#8b5cf6' });
-  if (hasDSP && hasEsoteric) modes.push({ key: 'merged', label: 'Full Dossier', icon: Layers, color: '#10b981' });
+  if (hasDSP && hasEsoteric) modes.push({ key: 'merged', label: hasUnified ? 'Unified Dossier' : 'Full Dossier (Legacy)', icon: Layers, color: '#10b981' });
 
   return (
     <>

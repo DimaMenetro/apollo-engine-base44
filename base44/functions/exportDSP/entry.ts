@@ -69,11 +69,9 @@ function drawBar(doc, theme, x, y, w, score, color) {
 }
 
 function drawConfidenceArc(doc, theme, cx, cy, radius, score) {
-  // Draw background circle
   doc.setDrawColor(...rgb(theme.border));
   doc.setLineWidth(2);
   doc.circle(cx, cy, radius, 'S');
-  // Draw score arc using small line segments
   const color = score >= 80 ? theme.green : score >= 60 ? theme.accent : theme.rose;
   doc.setDrawColor(...rgb(color));
   doc.setLineWidth(2.5);
@@ -88,7 +86,6 @@ function drawConfidenceArc(doc, theme, cx, cy, radius, score) {
       cx + radius * Math.cos(a2), cy + radius * Math.sin(a2)
     );
   }
-  // Score text
   doc.setFontSize(16);
   doc.setTextColor(...rgb(color));
   doc.text(`${score}%`, cx, cy + 2, { align: 'center' });
@@ -126,8 +123,6 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { subject_id, mode, color_theme } = await req.json();
-    // mode: 'dsp' | 'esoteric' | 'merged'
-    // color_theme: 'dark' | 'light'
     if (!subject_id) return Response.json({ error: 'subject_id required' }, { status: 400 });
 
     const subjects = await base44.asServiceRole.entities.Subject.filter({ id: subject_id });
@@ -137,6 +132,7 @@ Deno.serve(async (req) => {
     const theme = THEMES[color_theme] || THEMES.dark;
     const dsp = subject.dsp || {};
     const esp = subject.esoteric_profile || null;
+    const ud = subject.unified_dossier || null;
     const exportMode = mode || 'dsp';
 
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -146,12 +142,14 @@ Deno.serve(async (req) => {
 
     drawPageBg(doc, theme);
 
+    // Determine if we should use synthesized content for merged mode
+    const useSynthesis = exportMode === 'merged' && ud?.date_synthesized && ud?.unified_identity_portrait;
+
     // ══════════════════════════════════════════════════════════════════════════
     // COVER PAGE
     // ══════════════════════════════════════════════════════════════════════════
     margin.y = 50;
 
-    // Title
     doc.setFontSize(10);
     doc.setTextColor(...rgb(theme.muted));
     doc.text('APOLLO PROFILING ENGINE', pageW / 2, margin.y, { align: 'center' });
@@ -160,7 +158,7 @@ Deno.serve(async (req) => {
     doc.setFontSize(24);
     doc.setTextColor(...rgb(theme.title));
     const docTitle = exportMode === 'esoteric' ? 'Esoteric Intelligence Profile'
-      : exportMode === 'merged' ? 'Unified Subject Dossier'
+      : exportMode === 'merged' ? (useSynthesis ? 'Unified Subject Dossier' : 'Combined Subject Dossier')
       : 'Definitive Subject Profile';
     doc.text(docTitle, pageW / 2, margin.y, { align: 'center' });
     margin.y += 10;
@@ -173,10 +171,17 @@ Deno.serve(async (req) => {
 
     // Metadata block
     const metaLines = [];
-    if (dsp.document_id) metaLines.push(['DOCUMENT ID', dsp.document_id]);
-    metaLines.push(['PROTOCOL', dsp.protocol_version || 'CP-003-O-D-APL v2.1']);
-    metaLines.push(['DATE', dsp.date_of_synthesis || new Date().toISOString().split('T')[0]]);
-    if (exportMode !== 'dsp' && esp) metaLines.push(['ESOTERIC', 'CP-012-O-D-ESP']);
+    if (useSynthesis) {
+      metaLines.push(['SYNTHESIS DATE', ud.date_synthesized]);
+      metaLines.push(['DSP SOURCE', ud.dsp_source_date || dsp.date_of_synthesis || 'N/A']);
+      metaLines.push(['ESOTERIC SOURCE', ud.esoteric_source_date || esp?.date_executed || 'N/A']);
+      metaLines.push(['PROTOCOL', 'CP-003 + CP-012 → MELLMA Synthesis']);
+    } else {
+      if (dsp.document_id) metaLines.push(['DOCUMENT ID', dsp.document_id]);
+      metaLines.push(['PROTOCOL', dsp.protocol_version || 'CP-003-O-D-APL v2.1']);
+      metaLines.push(['DATE', dsp.date_of_synthesis || new Date().toISOString().split('T')[0]]);
+      if (exportMode !== 'dsp' && esp) metaLines.push(['ESOTERIC', 'CP-012-O-D-ESP']);
+    }
 
     for (const [label, val] of metaLines) {
       doc.setFontSize(7);
@@ -189,8 +194,24 @@ Deno.serve(async (req) => {
     }
     margin.y += 8;
 
-    // Confidence arc (if DSP)
-    if (exportMode !== 'esoteric' && dsp.confidence_score) {
+    // Confidence arc
+    if (useSynthesis && ud.synthesis_confidence) {
+      // Synthesis confidence
+      drawConfidenceArc(doc, theme, pageW / 2, margin.y + 18, 16, Math.round(ud.synthesis_confidence));
+      margin.y += 42;
+      doc.setFontSize(7);
+      doc.setTextColor(...rgb(theme.muted));
+      doc.text('SYNTHESIS CONFIDENCE', pageW / 2, margin.y, { align: 'center' });
+      margin.y += 5;
+      if (ud.synthesis_methodology_note) {
+        const methLines = doc.splitTextToSize(ud.synthesis_methodology_note, 120);
+        for (const l of methLines) {
+          doc.text(l, pageW / 2, margin.y, { align: 'center' });
+          margin.y += 3.5;
+        }
+      }
+      margin.y += 6;
+    } else if (exportMode !== 'esoteric' && dsp.confidence_score) {
       drawConfidenceArc(doc, theme, pageW / 2, margin.y + 18, 16, dsp.confidence_score);
       margin.y += 42;
       if (dsp.confidence_justification) {
@@ -205,8 +226,8 @@ Deno.serve(async (req) => {
       margin.y += 6;
     }
 
-    // Classification
-    if (exportMode !== 'esoteric' && dsp.classification) {
+    // Classification (DSP and legacy merged)
+    if (!useSynthesis && exportMode !== 'esoteric' && dsp.classification) {
       doc.setFontSize(7);
       doc.setTextColor(...rgb(theme.muted));
       doc.text('CLASSIFICATION', pageW / 2, margin.y, { align: 'center' });
@@ -225,303 +246,434 @@ Deno.serve(async (req) => {
 
     doc.setFontSize(7);
     doc.setTextColor(...rgb(theme.muted));
-    const modeLabel = exportMode === 'merged' ? 'UNIFIED DOSSIER — DSP + CP-012 ESOTERIC'
+    const modeLabel = useSynthesis ? 'UNIFIED DOSSIER — MELLMA SYNTHESIS'
+      : exportMode === 'merged' ? 'COMBINED DOSSIER — DSP + CP-012 ESOTERIC'
       : exportMode === 'esoteric' ? 'CP-012-O-D-ESP ESOTERIC INTELLIGENCE'
       : 'DEFINITIVE SUBJECT PROFILE';
     doc.text(modeLabel, pageW / 2, margin.y, { align: 'center' });
 
+
     // ══════════════════════════════════════════════════════════════════════════
-    // DSP CONTENT
+    // SYNTHESIZED CONTENT (merged mode with synthesis data)
     // ══════════════════════════════════════════════════════════════════════════
-    if (exportMode !== 'esoteric') {
+    if (useSynthesis) {
       doc.addPage();
       drawPageBg(doc, theme);
       margin.y = 20;
 
-      // Executive Summary
-      sectionHeader(doc, theme, margin, '■', 'EXECUTIVE SUMMARY', theme.accent);
-      wrappedText(doc, theme, margin, dsp.executive_summary || 'No summary available.');
-      margin.y += 4;
+      // ── Convergence/Divergence Summary ────────────────────────────────────
+      const cMap = ud.convergence_map;
+      if (cMap && typeof cMap.overall_alignment_score === 'number') {
+        sectionHeader(doc, theme, margin, '◎', 'CONVERGENCE ANALYSIS', theme.green);
 
-      // Personality Matrix
-      sectionHeader(doc, theme, margin, '◆', 'PERSONALITY MATRIX', theme.violet);
-      const traits = ['openness', 'conscientiousness', 'extraversion', 'agreeableness', 'neuroticism'];
-      const traitLabels = { openness: 'Openness', conscientiousness: 'Conscientiousness', extraversion: 'Extraversion', agreeableness: 'Agreeableness', neuroticism: 'Neuroticism' };
-      for (const trait of traits) {
-        const data = dsp.personality_matrix?.[trait] || {};
-        const score = data.score || 50;
-        const barColor = score >= 70 ? theme.green : score >= 40 ? theme.accent : theme.rose;
-
-        ensureSpace(doc, 22, theme, margin);
-        // Trait name + score
-        doc.setFontSize(10);
+        // Alignment score bar
+        ensureSpace(doc, 16, theme, margin);
+        doc.setFontSize(8);
         doc.setTextColor(...rgb(theme.title));
-        doc.text(traitLabels[trait], margin.left, margin.y);
-        doc.setTextColor(...rgb(theme.muted));
-        doc.text(`${score}%`, margin.left + contentW, margin.y, { align: 'right' });
+        doc.text('Overall Alignment', margin.left, margin.y);
+        const alignScore = Math.round(cMap.overall_alignment_score);
+        const alignColor = alignScore >= 75 ? theme.green : alignScore >= 50 ? theme.accent : theme.rose;
+        doc.setTextColor(...rgb(alignColor));
+        doc.text(`${alignScore}%`, margin.left + contentW, margin.y, { align: 'right' });
         margin.y += 4;
-        // Bar
-        drawBar(doc, theme, margin.left, margin.y, contentW, score, barColor);
-        margin.y += 5;
-        // Evidence
-        if (data.evidence) {
-          doc.setFontSize(7);
-          doc.setTextColor(...rgb(theme.muted));
-          const evLines = doc.splitTextToSize(`"${data.evidence}"`, contentW);
-          for (const l of evLines) {
-            doc.text(l, margin.left, margin.y);
-            margin.y += 3;
-          }
-        }
-        // Indicators
-        if (data.indicators?.length > 0) {
-          doc.setFontSize(7);
-          doc.setTextColor(...rgb(theme.muted));
-          for (const ind of data.indicators) {
-            ensureSpace(doc, 4, theme, margin);
-            doc.text(`• ${ind}`, margin.left + 2, margin.y);
-            margin.y += 3.5;
-          }
-        }
-        margin.y += 3;
-      }
+        drawBar(doc, theme, margin.left, margin.y, contentW, alignScore, alignColor);
+        margin.y += 8;
 
-      // Cognitive Architecture
-      sectionHeader(doc, theme, margin, '◆', 'COGNITIVE ARCHITECTURE', theme.violet);
-      const cogArch = dsp.cognitive_architecture || {};
-      const cogFields = [
-        ['THINKING STYLE', cogArch.thinking_style],
-        ['EPISTEMIC REQUIREMENTS', cogArch.epistemic_requirements],
-        ['DEFENSE MECHANISMS', cogArch.defense_mechanisms],
-      ];
-      for (const [label, val] of cogFields) {
-        if (!val) continue;
-        ensureSpace(doc, 10, theme, margin);
-        doc.setFontSize(7);
-        doc.setTextColor(...rgb(theme.muted));
-        doc.text(label, margin.left, margin.y);
-        margin.y += 4;
-        wrappedText(doc, theme, margin, val);
-      }
-      if (cogArch.sub_sections?.length > 0) {
-        for (const sub of cogArch.sub_sections) {
+        // Convergence points
+        if (cMap.convergence_points?.length > 0) {
           ensureSpace(doc, 10, theme, margin);
           doc.setFontSize(7);
-          doc.setTextColor(...rgb(theme.muted));
-          doc.text((sub.title || '').toUpperCase(), margin.left, margin.y);
-          margin.y += 4;
-          wrappedText(doc, theme, margin, sub.content);
-        }
-      }
+          doc.setTextColor(...rgb(theme.green));
+          doc.text('CONVERGENCE POINTS', margin.left, margin.y);
+          margin.y += 5;
 
-      // Behavioral Patterns
-      if (dsp.behavioral_patterns?.length > 0) {
-        sectionHeader(doc, theme, margin, '▸', 'BEHAVIORAL PATTERNS', theme.green);
-        for (const pat of dsp.behavioral_patterns) {
-          ensureSpace(doc, 18, theme, margin);
-          doc.setFontSize(9);
-          doc.setTextColor(...rgb(theme.accent));
-          doc.text(pat.label || '', margin.left, margin.y);
-          margin.y += 4;
-          wrappedText(doc, theme, margin, pat.description);
-          if (pat.context) {
-            doc.setFontSize(7);
-            doc.setTextColor(...rgb(theme.muted));
-            const ctxLines = doc.splitTextToSize(pat.context, contentW);
-            for (const l of ctxLines) {
-              ensureSpace(doc, 4, theme, margin);
-              doc.text(l, margin.left, margin.y);
-              margin.y += 3.5;
+          for (const cp of cMap.convergence_points) {
+            ensureSpace(doc, 20, theme, margin);
+            doc.setFontSize(8);
+            doc.setTextColor(...rgb(theme.accent));
+            doc.text(cp.domain || 'Domain', margin.left, margin.y);
+            if (typeof cp.confidence === 'number') {
+              doc.setTextColor(...rgb(theme.muted));
+              doc.text(`${cp.confidence}%`, margin.left + contentW, margin.y, { align: 'right' });
+            }
+            margin.y += 4;
+
+            if (cp.dsp_evidence) {
+              doc.setFontSize(7);
+              doc.setTextColor(...rgb(theme.muted));
+              doc.text('DSP:', margin.left + 2, margin.y);
+              margin.y += 3;
+              wrappedText(doc, theme, margin, cp.dsp_evidence, { fontSize: 7, x: margin.left + 2, maxW: contentW - 4 });
+            }
+            if (cp.esoteric_evidence) {
+              doc.setFontSize(7);
+              doc.setTextColor(...rgb(theme.muted));
+              doc.text('Esoteric:', margin.left + 2, margin.y);
+              margin.y += 3;
+              wrappedText(doc, theme, margin, cp.esoteric_evidence, { fontSize: 7, x: margin.left + 2, maxW: contentW - 4 });
+            }
+            if (cp.significance) {
+              wrappedText(doc, theme, margin, cp.significance, { fontSize: 7, color: theme.green, x: margin.left + 2, maxW: contentW - 4 });
             }
             margin.y += 2;
           }
         }
-      }
 
-      // Predictive Model
-      if (dsp.action_response_matrix?.length > 0) {
-        sectionHeader(doc, theme, margin, '▸', 'PREDICTIVE MODEL', theme.green);
-        for (const pred of dsp.action_response_matrix) {
-          const trigger = pred.trigger || pred.scenario || '';
-          const behavior = pred.predicted_behavior || pred.response || '';
-          const prob = pred.probability || 75;
-          const probColor = prob >= 80 ? theme.green : prob >= 60 ? theme.accent : theme.rose;
-
-          ensureSpace(doc, 24, theme, margin);
-          // Trigger
+        // Divergence points
+        if (cMap.divergence_points?.length > 0) {
+          ensureSpace(doc, 10, theme, margin);
           doc.setFontSize(7);
-          doc.setTextColor(...rgb(theme.accent));
-          doc.text('TRIGGER', margin.left, margin.y);
-          margin.y += 3.5;
-          wrappedText(doc, theme, margin, trigger, { fontSize: 8 });
-
-          // Predicted behavior
-          doc.setFontSize(7);
-          doc.setTextColor(...rgb(theme.green));
-          doc.text('PREDICTED BEHAVIOR', margin.left, margin.y);
-          margin.y += 3.5;
-          wrappedText(doc, theme, margin, behavior, { fontSize: 8 });
-
-          // Probability badge
-          doc.setFontSize(8);
-          doc.setTextColor(...rgb(probColor));
-          doc.text(`Probability: ${prob}%`, margin.left, margin.y);
-          if (pred.confidence_interval) {
-            doc.setTextColor(...rgb(theme.muted));
-            doc.text(`  CI: [${pred.confidence_interval.lower || 0}%, ${pred.confidence_interval.upper || 0}%]`, margin.left + 35, margin.y);
-          }
-          margin.y += 4;
-          // Probability bar
-          drawBar(doc, theme, margin.left, margin.y, 80, prob, probColor);
-          margin.y += 6;
-
-          if (pred.temporal_factors) {
-            doc.setFontSize(7);
-            doc.setTextColor(...rgb(theme.violet));
-            doc.text('TEMPORAL: ', margin.left, margin.y);
-            doc.setTextColor(...rgb(theme.muted));
-            const tfLines = doc.splitTextToSize(pred.temporal_factors, contentW - 20);
-            doc.text(tfLines[0] || '', margin.left + 18, margin.y);
-            margin.y += 4;
-          }
-          margin.y += 2;
-        }
-      }
-
-      // Motivations & Fears
-      const hasMot = dsp.motivations?.length > 0;
-      const hasFears = dsp.fears?.length > 0;
-      if (hasMot || hasFears) {
-        sectionHeader(doc, theme, margin, '◉', 'CORE DRIVERS', theme.green);
-        if (hasMot) {
-          doc.setFontSize(8);
-          doc.setTextColor(...rgb(theme.green));
-          doc.text('MOTIVATIONS', margin.left, margin.y);
-          margin.y += 4;
-          for (const m of dsp.motivations) {
-            ensureSpace(doc, 4, theme, margin);
-            doc.setFontSize(8);
-            doc.setTextColor(...rgb(theme.text));
-            doc.text(`▸ ${m}`, margin.left + 2, margin.y);
-            margin.y += 4;
-          }
-          margin.y += 2;
-        }
-        if (hasFears) {
-          doc.setFontSize(8);
           doc.setTextColor(...rgb(theme.rose));
-          doc.text('FEARS', margin.left, margin.y);
-          margin.y += 4;
-          for (const f of dsp.fears) {
-            ensureSpace(doc, 4, theme, margin);
+          doc.text('DIVERGENCE POINTS', margin.left, margin.y);
+          margin.y += 5;
+
+          for (const dp of cMap.divergence_points) {
+            ensureSpace(doc, 20, theme, margin);
             doc.setFontSize(8);
-            doc.setTextColor(...rgb(theme.text));
-            doc.text(`▸ ${f}`, margin.left + 2, margin.y);
+            doc.setTextColor(...rgb(theme.accent));
+            doc.text(dp.domain || 'Domain', margin.left, margin.y);
+            if (dp.tension_value) {
+              const tensionColor = dp.tension_value === 'high' ? theme.rose : dp.tension_value === 'medium' ? theme.accent : theme.muted;
+              doc.setTextColor(...rgb(tensionColor));
+              doc.text(`Tension: ${dp.tension_value}`, margin.left + contentW, margin.y, { align: 'right' });
+            }
             margin.y += 4;
+
+            if (dp.dsp_position) {
+              doc.setFontSize(7);
+              doc.setTextColor(...rgb(theme.muted));
+              doc.text('DSP Position:', margin.left + 2, margin.y);
+              margin.y += 3;
+              wrappedText(doc, theme, margin, dp.dsp_position, { fontSize: 7, x: margin.left + 2, maxW: contentW - 4 });
+            }
+            if (dp.esoteric_position) {
+              doc.setFontSize(7);
+              doc.setTextColor(...rgb(theme.muted));
+              doc.text('Esoteric Position:', margin.left + 2, margin.y);
+              margin.y += 3;
+              wrappedText(doc, theme, margin, dp.esoteric_position, { fontSize: 7, x: margin.left + 2, maxW: contentW - 4 });
+            }
+            if (dp.arbitration) {
+              doc.setFontSize(7);
+              doc.setTextColor(...rgb(theme.violet));
+              doc.text('Arbitration:', margin.left + 2, margin.y);
+              margin.y += 3;
+              wrappedText(doc, theme, margin, dp.arbitration, { fontSize: 7, x: margin.left + 2, maxW: contentW - 4 });
+            }
+            margin.y += 2;
           }
-          margin.y += 2;
         }
+        margin.y += 4;
       }
 
-      // Final Assessment
-      if (dsp.final_assessment) {
-        sectionHeader(doc, theme, margin, '■', 'FINAL ASSESSMENT', theme.accent);
-        wrappedText(doc, theme, margin, dsp.final_assessment);
-      }
-
-      // Conflicts
-      if (subject.conflicts_detected?.length > 0) {
-        sectionHeader(doc, theme, margin, '⚠', 'ANALYSIS CONFLICTS', theme.rose);
-        for (const c of subject.conflicts_detected) {
-          ensureSpace(doc, 8, theme, margin);
-          wrappedText(doc, theme, margin, c.description, { color: theme.rose, fontSize: 8 });
-          if (c.resolution) {
-            wrappedText(doc, theme, margin, `Resolution: ${c.resolution}`, { color: theme.muted, fontSize: 7 });
-          }
-        }
-      }
-    }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    // ESOTERIC CONTENT
-    // ══════════════════════════════════════════════════════════════════════════
-    if ((exportMode === 'esoteric' || exportMode === 'merged') && esp) {
-      doc.addPage();
-      drawPageBg(doc, theme);
-      margin.y = 20;
-
-      if (exportMode === 'merged') {
-        // Transition page for merged mode
-        margin.y = 60;
-        doc.setFontSize(8);
-        doc.setTextColor(...rgb(theme.muted));
-        doc.text('SUPPLEMENTARY LAYER', pageW / 2, margin.y, { align: 'center' });
-        margin.y += 8;
-        doc.setFontSize(16);
-        doc.setTextColor(...rgb(theme.violet));
-        doc.text('Esoteric Intelligence Profile', pageW / 2, margin.y, { align: 'center' });
-        margin.y += 6;
-        doc.setFontSize(8);
-        doc.setTextColor(...rgb(theme.muted));
-        doc.text('CP-012-O-D-ESP', pageW / 2, margin.y, { align: 'center' });
-        margin.y += 5;
-        doc.setTextColor(...rgb(theme.muted));
-        doc.text(`Fidelity: ${esp.input_fidelity || 'N/A'}  •  Status: ${esp.execution_status || 'N/A'}  •  Executed: ${esp.date_executed || 'N/A'}`, pageW / 2, margin.y, { align: 'center' });
-        margin.y += 14;
-
-        doc.addPage();
-        drawPageBg(doc, theme);
-        margin.y = 20;
-      } else {
-        // Standalone esoteric header
-        doc.setFontSize(7);
-        doc.setTextColor(...rgb(theme.muted));
-        doc.text(`Fidelity: ${esp.input_fidelity || 'N/A'}  •  Status: ${esp.execution_status || 'N/A'}  •  Executed: ${esp.date_executed || 'N/A'}`, margin.left, margin.y);
-        margin.y += 8;
-      }
-
-      const espSections = [
-        ['✦', 'ESOTERIC INQUIRY FRAME', esp.inquiry_frame, theme.violet],
-        ['☉', 'ASTROLOGICAL INTERPRETATION (NODE ALPHA)', esp.astrological_interpretation, theme.accent],
-        ['#', 'NUMEROLOGICAL INTERPRETATION (NODE BETA)', esp.numerological_interpretation, theme.cyan],
-        ['◈', 'UNIFIED EMOTIONAL SYNTHESIS', esp.unified_emotional_synthesis, theme.violet],
-        ['↗', 'THRESHOLD ASSESSMENT', esp.threshold_assessment, theme.accent],
-        ['→', 'STRATEGIC TRANSLATION', esp.strategic_translation, theme.green],
-        ['⚠', 'LIMITATION STATEMENT', esp.limitation_statement, theme.muted],
+      // ── Narrative Sections ────────────────────────────────────────────────
+      const synthSections = [
+        ['■', 'UNIFIED IDENTITY PORTRAIT', ud.unified_identity_portrait, theme.green],
+        ['◆', 'PSYCHODYNAMIC ARCHITECTURE', ud.psychodynamic_architecture, theme.violet],
+        ['★', 'PERSONALITY & ARCHETYPAL RESONANCE', ud.personality_archetypal_resonance, theme.accent],
+        ['▸', 'BEHAVIORAL TOPOLOGY', ud.behavioral_topology, theme.cyan],
+        ['◎', 'PREDICTIVE CONVERGENCE MODEL', ud.predictive_convergence_model, theme.green],
+        ['◉', 'CORE DRIVERS & SHADOW', ud.core_drivers_shadow, theme.rose],
       ];
 
-      for (const [icon, title, content, color] of espSections) {
+      for (const [icon, title, content, color] of synthSections) {
         if (!content) continue;
         sectionHeader(doc, theme, margin, icon, title, color);
         wrappedText(doc, theme, margin, content);
-        margin.y += 3;
+        margin.y += 4;
       }
 
-      // SME Validation
-      if (esp.sme_validation) {
-        sectionHeader(doc, theme, margin, '✓', 'SME VALIDATION CHECK', theme.green);
-        const checks = [
-          ['Astrology Governed Timing', esp.sme_validation.astrology_governed_timing],
-          ['Numerology Governed Structure', esp.sme_validation.numerology_governed_structure],
-          ['Emotional Depth Prioritized', esp.sme_validation.emotional_depth_prioritized],
-          ['Practical Translation Achieved', esp.sme_validation.practical_translation_achieved],
-          ['Generic Horoscope Drift Avoided', esp.sme_validation.generic_horoscope_drift_avoided],
-        ];
-        for (const [label, val] of checks) {
-          ensureSpace(doc, 5, theme, margin);
-          const passed = val === true;
-          doc.setFontSize(8);
-          doc.setTextColor(...rgb(passed ? theme.green : theme.rose));
-          doc.text(passed ? '✓' : '✗', margin.left, margin.y);
-          doc.setTextColor(...rgb(theme.text));
-          doc.text(label, margin.left + 6, margin.y);
+      // ── Final Unified Assessment ──────────────────────────────────────────
+      if (ud.final_unified_assessment) {
+        sectionHeader(doc, theme, margin, '■', 'FINAL UNIFIED ASSESSMENT', theme.accent);
+        wrappedText(doc, theme, margin, ud.final_unified_assessment);
+        margin.y += 4;
+      }
+
+    } else {
+      // ══════════════════════════════════════════════════════════════════════════
+      // DSP CONTENT (original, unchanged)
+      // ══════════════════════════════════════════════════════════════════════════
+      if (exportMode !== 'esoteric') {
+        doc.addPage();
+        drawPageBg(doc, theme);
+        margin.y = 20;
+
+        // Executive Summary
+        sectionHeader(doc, theme, margin, '■', 'EXECUTIVE SUMMARY', theme.accent);
+        wrappedText(doc, theme, margin, dsp.executive_summary || 'No summary available.');
+        margin.y += 4;
+
+        // Personality Matrix
+        sectionHeader(doc, theme, margin, '◆', 'PERSONALITY MATRIX', theme.violet);
+        const traits = ['openness', 'conscientiousness', 'extraversion', 'agreeableness', 'neuroticism'];
+        const traitLabels = { openness: 'Openness', conscientiousness: 'Conscientiousness', extraversion: 'Extraversion', agreeableness: 'Agreeableness', neuroticism: 'Neuroticism' };
+        for (const trait of traits) {
+          const data = dsp.personality_matrix?.[trait] || {};
+          const score = data.score || 50;
+          const barColor = score >= 70 ? theme.green : score >= 40 ? theme.accent : theme.rose;
+
+          ensureSpace(doc, 22, theme, margin);
+          doc.setFontSize(10);
+          doc.setTextColor(...rgb(theme.title));
+          doc.text(traitLabels[trait], margin.left, margin.y);
+          doc.setTextColor(...rgb(theme.muted));
+          doc.text(`${score}%`, margin.left + contentW, margin.y, { align: 'right' });
+          margin.y += 4;
+          drawBar(doc, theme, margin.left, margin.y, contentW, score, barColor);
           margin.y += 5;
+          if (data.evidence) {
+            doc.setFontSize(7);
+            doc.setTextColor(...rgb(theme.muted));
+            const evLines = doc.splitTextToSize(`"${data.evidence}"`, contentW);
+            for (const l of evLines) {
+              doc.text(l, margin.left, margin.y);
+              margin.y += 3;
+            }
+          }
+          if (data.indicators?.length > 0) {
+            doc.setFontSize(7);
+            doc.setTextColor(...rgb(theme.muted));
+            for (const ind of data.indicators) {
+              ensureSpace(doc, 4, theme, margin);
+              doc.text(`• ${ind}`, margin.left + 2, margin.y);
+              margin.y += 3.5;
+            }
+          }
+          margin.y += 3;
         }
-        margin.y += 2;
-        doc.setFontSize(8);
-        doc.setTextColor(...rgb(theme.muted));
-        doc.text(`Execution Status: ${esp.sme_validation.execution_status || 'N/A'}`, margin.left, margin.y);
-        margin.y += 6;
+
+        // Cognitive Architecture
+        sectionHeader(doc, theme, margin, '◆', 'COGNITIVE ARCHITECTURE', theme.violet);
+        const cogArch = dsp.cognitive_architecture || {};
+        const cogFields = [
+          ['THINKING STYLE', cogArch.thinking_style],
+          ['EPISTEMIC REQUIREMENTS', cogArch.epistemic_requirements],
+          ['DEFENSE MECHANISMS', cogArch.defense_mechanisms],
+        ];
+        for (const [label, val] of cogFields) {
+          if (!val) continue;
+          ensureSpace(doc, 10, theme, margin);
+          doc.setFontSize(7);
+          doc.setTextColor(...rgb(theme.muted));
+          doc.text(label, margin.left, margin.y);
+          margin.y += 4;
+          wrappedText(doc, theme, margin, val);
+        }
+        if (cogArch.sub_sections?.length > 0) {
+          for (const sub of cogArch.sub_sections) {
+            ensureSpace(doc, 10, theme, margin);
+            doc.setFontSize(7);
+            doc.setTextColor(...rgb(theme.muted));
+            doc.text((sub.title || '').toUpperCase(), margin.left, margin.y);
+            margin.y += 4;
+            wrappedText(doc, theme, margin, sub.content);
+          }
+        }
+
+        // Behavioral Patterns
+        if (dsp.behavioral_patterns?.length > 0) {
+          sectionHeader(doc, theme, margin, '▸', 'BEHAVIORAL PATTERNS', theme.green);
+          for (const pat of dsp.behavioral_patterns) {
+            ensureSpace(doc, 18, theme, margin);
+            doc.setFontSize(9);
+            doc.setTextColor(...rgb(theme.accent));
+            doc.text(pat.label || '', margin.left, margin.y);
+            margin.y += 4;
+            wrappedText(doc, theme, margin, pat.description);
+            if (pat.context) {
+              doc.setFontSize(7);
+              doc.setTextColor(...rgb(theme.muted));
+              const ctxLines = doc.splitTextToSize(pat.context, contentW);
+              for (const l of ctxLines) {
+                ensureSpace(doc, 4, theme, margin);
+                doc.text(l, margin.left, margin.y);
+                margin.y += 3.5;
+              }
+              margin.y += 2;
+            }
+          }
+        }
+
+        // Predictive Model
+        if (dsp.action_response_matrix?.length > 0) {
+          sectionHeader(doc, theme, margin, '▸', 'PREDICTIVE MODEL', theme.green);
+          for (const pred of dsp.action_response_matrix) {
+            const trigger = pred.trigger || pred.scenario || '';
+            const behavior = pred.predicted_behavior || pred.response || '';
+            const prob = pred.probability || 75;
+            const probColor = prob >= 80 ? theme.green : prob >= 60 ? theme.accent : theme.rose;
+
+            ensureSpace(doc, 24, theme, margin);
+            doc.setFontSize(7);
+            doc.setTextColor(...rgb(theme.accent));
+            doc.text('TRIGGER', margin.left, margin.y);
+            margin.y += 3.5;
+            wrappedText(doc, theme, margin, trigger, { fontSize: 8 });
+
+            doc.setFontSize(7);
+            doc.setTextColor(...rgb(theme.green));
+            doc.text('PREDICTED BEHAVIOR', margin.left, margin.y);
+            margin.y += 3.5;
+            wrappedText(doc, theme, margin, behavior, { fontSize: 8 });
+
+            doc.setFontSize(8);
+            doc.setTextColor(...rgb(probColor));
+            doc.text(`Probability: ${prob}%`, margin.left, margin.y);
+            if (pred.confidence_interval) {
+              doc.setTextColor(...rgb(theme.muted));
+              doc.text(`  CI: [${pred.confidence_interval.lower || 0}%, ${pred.confidence_interval.upper || 0}%]`, margin.left + 35, margin.y);
+            }
+            margin.y += 4;
+            drawBar(doc, theme, margin.left, margin.y, 80, prob, probColor);
+            margin.y += 6;
+
+            if (pred.temporal_factors) {
+              doc.setFontSize(7);
+              doc.setTextColor(...rgb(theme.violet));
+              doc.text('TEMPORAL: ', margin.left, margin.y);
+              doc.setTextColor(...rgb(theme.muted));
+              const tfLines = doc.splitTextToSize(pred.temporal_factors, contentW - 20);
+              doc.text(tfLines[0] || '', margin.left + 18, margin.y);
+              margin.y += 4;
+            }
+            margin.y += 2;
+          }
+        }
+
+        // Motivations & Fears
+        const hasMot = dsp.motivations?.length > 0;
+        const hasFears = dsp.fears?.length > 0;
+        if (hasMot || hasFears) {
+          sectionHeader(doc, theme, margin, '◉', 'CORE DRIVERS', theme.green);
+          if (hasMot) {
+            doc.setFontSize(8);
+            doc.setTextColor(...rgb(theme.green));
+            doc.text('MOTIVATIONS', margin.left, margin.y);
+            margin.y += 4;
+            for (const m of dsp.motivations) {
+              ensureSpace(doc, 4, theme, margin);
+              doc.setFontSize(8);
+              doc.setTextColor(...rgb(theme.text));
+              doc.text(`▸ ${m}`, margin.left + 2, margin.y);
+              margin.y += 4;
+            }
+            margin.y += 2;
+          }
+          if (hasFears) {
+            doc.setFontSize(8);
+            doc.setTextColor(...rgb(theme.rose));
+            doc.text('FEARS', margin.left, margin.y);
+            margin.y += 4;
+            for (const f of dsp.fears) {
+              ensureSpace(doc, 4, theme, margin);
+              doc.setFontSize(8);
+              doc.setTextColor(...rgb(theme.text));
+              doc.text(`▸ ${f}`, margin.left + 2, margin.y);
+              margin.y += 4;
+            }
+            margin.y += 2;
+          }
+        }
+
+        // Final Assessment
+        if (dsp.final_assessment) {
+          sectionHeader(doc, theme, margin, '■', 'FINAL ASSESSMENT', theme.accent);
+          wrappedText(doc, theme, margin, dsp.final_assessment);
+        }
+
+        // Conflicts
+        if (subject.conflicts_detected?.length > 0) {
+          sectionHeader(doc, theme, margin, '⚠', 'ANALYSIS CONFLICTS', theme.rose);
+          for (const c of subject.conflicts_detected) {
+            ensureSpace(doc, 8, theme, margin);
+            wrappedText(doc, theme, margin, c.description, { color: theme.rose, fontSize: 8 });
+            if (c.resolution) {
+              wrappedText(doc, theme, margin, `Resolution: ${c.resolution}`, { color: theme.muted, fontSize: 7 });
+            }
+          }
+        }
+      }
+
+      // ══════════════════════════════════════════════════════════════════════════
+      // ESOTERIC CONTENT (legacy concatenation for merged, or standalone)
+      // ══════════════════════════════════════════════════════════════════════════
+      if ((exportMode === 'esoteric' || exportMode === 'merged') && esp) {
+        doc.addPage();
+        drawPageBg(doc, theme);
+        margin.y = 20;
+
+        if (exportMode === 'merged') {
+          margin.y = 60;
+          doc.setFontSize(8);
+          doc.setTextColor(...rgb(theme.muted));
+          doc.text('SUPPLEMENTARY LAYER', pageW / 2, margin.y, { align: 'center' });
+          margin.y += 8;
+          doc.setFontSize(16);
+          doc.setTextColor(...rgb(theme.violet));
+          doc.text('Esoteric Intelligence Profile', pageW / 2, margin.y, { align: 'center' });
+          margin.y += 6;
+          doc.setFontSize(8);
+          doc.setTextColor(...rgb(theme.muted));
+          doc.text('CP-012-O-D-ESP', pageW / 2, margin.y, { align: 'center' });
+          margin.y += 5;
+          doc.setTextColor(...rgb(theme.muted));
+          doc.text(`Fidelity: ${esp.input_fidelity || 'N/A'}  •  Status: ${esp.execution_status || 'N/A'}  •  Executed: ${esp.date_executed || 'N/A'}`, pageW / 2, margin.y, { align: 'center' });
+          margin.y += 14;
+
+          doc.addPage();
+          drawPageBg(doc, theme);
+          margin.y = 20;
+        } else {
+          doc.setFontSize(7);
+          doc.setTextColor(...rgb(theme.muted));
+          doc.text(`Fidelity: ${esp.input_fidelity || 'N/A'}  •  Status: ${esp.execution_status || 'N/A'}  •  Executed: ${esp.date_executed || 'N/A'}`, margin.left, margin.y);
+          margin.y += 8;
+        }
+
+        const espSections = [
+          ['✦', 'ESOTERIC INQUIRY FRAME', esp.inquiry_frame, theme.violet],
+          ['☉', 'ASTROLOGICAL INTERPRETATION (NODE ALPHA)', esp.astrological_interpretation, theme.accent],
+          ['#', 'NUMEROLOGICAL INTERPRETATION (NODE BETA)', esp.numerological_interpretation, theme.cyan],
+          ['◈', 'UNIFIED EMOTIONAL SYNTHESIS', esp.unified_emotional_synthesis, theme.violet],
+          ['↗', 'THRESHOLD ASSESSMENT', esp.threshold_assessment, theme.accent],
+          ['→', 'STRATEGIC TRANSLATION', esp.strategic_translation, theme.green],
+          ['⚠', 'LIMITATION STATEMENT', esp.limitation_statement, theme.muted],
+        ];
+
+        for (const [icon, title, content, color] of espSections) {
+          if (!content) continue;
+          sectionHeader(doc, theme, margin, icon, title, color);
+          wrappedText(doc, theme, margin, content);
+          margin.y += 3;
+        }
+
+        // SME Validation
+        if (esp.sme_validation) {
+          sectionHeader(doc, theme, margin, '✓', 'SME VALIDATION CHECK', theme.green);
+          const checks = [
+            ['Astrology Governed Timing', esp.sme_validation.astrology_governed_timing],
+            ['Numerology Governed Structure', esp.sme_validation.numerology_governed_structure],
+            ['Emotional Depth Prioritized', esp.sme_validation.emotional_depth_prioritized],
+            ['Practical Translation Achieved', esp.sme_validation.practical_translation_achieved],
+            ['Generic Horoscope Drift Avoided', esp.sme_validation.generic_horoscope_drift_avoided],
+          ];
+          for (const [label, val] of checks) {
+            ensureSpace(doc, 5, theme, margin);
+            const passed = val === true;
+            doc.setFontSize(8);
+            doc.setTextColor(...rgb(passed ? theme.green : theme.rose));
+            doc.text(passed ? '✓' : '✗', margin.left, margin.y);
+            doc.setTextColor(...rgb(theme.text));
+            doc.text(label, margin.left + 6, margin.y);
+            margin.y += 5;
+          }
+          margin.y += 2;
+          doc.setFontSize(8);
+          doc.setTextColor(...rgb(theme.muted));
+          doc.text(`Execution Status: ${esp.sme_validation.execution_status || 'N/A'}`, margin.left, margin.y);
+          margin.y += 6;
+        }
       }
     }
 
