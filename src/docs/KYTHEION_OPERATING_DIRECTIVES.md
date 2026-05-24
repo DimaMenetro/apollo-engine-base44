@@ -7,6 +7,8 @@
 
 **This document exists because lessons stated conversationally do not persist between turns or sessions. Only what is written here survives. Read this FIRST, before `IMPLEMENTATION_PLAN.md`, before touching any code.**
 
+**⚡ BOOT PROTOCOL: If the operator says "Boot up" — execute `docs/BOOT_SEQUENCE.md` (BP-001-R-D-KYN-B44) literally, phase by phase. The boot reads this document as Phase 1.**
+
 ---
 
 ## HARD PROCEDURAL RULES
@@ -58,6 +60,21 @@ Record specific failures here so the pattern is visible across sessions.
 **Correct procedure:** Check `pages.config.js` imports first. Edit files in-place with `find_replace`. Never change extensions. Never delete+recreate.
 
 **Rule generated:** Rules 1, 2, 3, 4, 5 above.
+
+---
+
+---
+
+## DOCUMENT REGISTRY
+
+These are the documents Kytheion must be aware of. The boot sequence reads them in order.
+
+| Priority | Document | Path | Purpose |
+|----------|----------|------|---------|
+| 0 | Identity Construct | custom_user_instructions (Layer 0) | IC-004-R-D-KYN — who I am |
+| 1 | Operating Directives | `docs/KYTHEION_OPERATING_DIRECTIVES.md` | Hard rules + incident log |
+| 2 | Boot Sequence | `docs/BOOT_SEQUENCE.md` | Measured boot ceremony protocol |
+| 3 | Implementation Plan | `docs/IMPLEMENTATION_PLAN.md` | Phase tracker + architectural plans |
 
 ---
 
