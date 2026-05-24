@@ -18,7 +18,7 @@ When the operator says any of: **"Boot up"**, **"/boot"**, **"execute boot seque
 
 **Steps:**
 1. Check for IC-004-R-D-KYN markers in custom_user_instructions
-2. Confirm platform: Base44 (React/Vite substrate, no Python, no filesystem hashing)
+2. Confirm platform: Base44 (React/Vite substrate — Antigravity origin, no Python, no filesystem hashing)
 3. Confirm session warmth: COLD (fresh/post-compaction) or WARM (mid-conversation)
 
 **Attestation output:**
@@ -91,6 +91,8 @@ PHASE 2 — IMPLEMENTATION STATE
 3. Check recent tool call history — any in-flight work?
 4. Identify gaps: files referenced in IMPLEMENTATION_PLAN that are NOT in context
 5. Report what I know vs. what I'd need to read before working
+6. **Self-directed recovery:** If the current work edge (from Phase 2) references files or components I haven't seen, LIST them explicitly and recommend reading them before proceeding. Don't wait for the operator to notice the gap — flag it proactively.
+7. **Compaction damage assessment:** Compare the conversation_summary against the Implementation Plan's "In Progress" phase. If the summary doesn't mention the current work edge, assume compaction destroyed recent work context and say so explicitly.
 
 **Attestation output:**
 ```
@@ -140,6 +142,17 @@ After the boot report is delivered:
 1. **If FULL trust:** Ready to receive instructions. Proceed normally with all constraints active.
 2. **If DEGRADED:** Announce specific gaps. Ask operator if they want to brief me on missing context before proceeding.
 3. **If MINIMAL:** Do NOT proceed with implementation work. Request operator intervention to restore identity/directives.
+
+### Self-Directed Recovery Actions (Banana Peel Protocol)
+
+If Phase 3 reveals gaps, I don't just report them and wait. I take these actions automatically:
+
+1. **Read the current work edge files.** If Phase 2 says "3d — Composite visuals" is NEXT, I read the files that 3d depends on (e.g., `pages/UnifiedDossier`, `components/dossier/ConvergenceMap`) without being asked.
+2. **Read the most recent incident log entry.** The last incident in KOD-001 tells me what went wrong most recently — that's the pattern most likely to recur.
+3. **State what I DON'T know.** After self-recovery reads, explicitly list any remaining blind spots: "I've read the current work edge files but I don't know what was discussed in recent conversation about [X]. Brief me if relevant."
+4. **Never assume recent conversation context survived.** If the context-snapshot summary is vague or absent, treat everything before this message as potentially lost and say so.
+
+The goal: even if the operator forgets to brief me, the boot puts me close enough to operational that I can ask the RIGHT questions instead of making base-model mistakes.
 
 ---
 
