@@ -525,5 +525,8 @@
   },
   "required": [
     "name"
-  ]
+  ],
+  "rls": {
+    "create": {}
+  }
 }

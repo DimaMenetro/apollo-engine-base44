@@ -1,7 +1,15 @@
 # Apollo Profiling Engine — Master Implementation Plan
 ## Document ID: IP-001-G-D-APL
-## Last Updated: 2026-05-24
+## Last Updated: 2026-06-13
 ## Status: ACTIVE
+
+---
+
+## INCIDENT LOG
+
+| Date | Incident | Root Cause | Resolution |
+|------|----------|-----------|------------|
+| 2026-06-13 | DSP creation failed silently / errored | Default LLM provider (OpenAI) tightened JSON-schema validation — now requires every `properties` key to be in a `required` array. The DSP schema had none, causing a 400 `invalid_json_schema`. | Switched DSP generation in `pages/SubjectReview` to `claude_sonnet_4_6` (consistent with synthesizeDossier). Also hardened response unwrapping to handle the `{ response: {...} }` wrapper so DSP fields populate correctly. |
 
 ---
 

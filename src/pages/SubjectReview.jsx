@@ -101,13 +101,15 @@ Be thorough, specific, and analytical. Ground every claim in evidence. All score
 
       updateProgress('Synthesizing profile...', 30);
       const rawLLM = await base44.integrations.Core.InvokeLLM({
+        model: 'claude_sonnet_4_6',
         prompt: dspPrompt,
         response_json_schema: dspSchema,
       });
 
       updateProgress('Structuring DSP output...', 80);
-      // InvokeLLM with response_json_schema returns the object directly
-      const response = (typeof rawLLM === 'string') ? JSON.parse(rawLLM) : rawLLM;
+      // Normalize: some models return a string, some wrap the object in a `response` key
+      const parsed = (typeof rawLLM === 'string') ? JSON.parse(rawLLM) : rawLLM;
+      const response = (parsed && parsed.response && typeof parsed.response === 'object') ? parsed.response : parsed;
 
       const today = new Date().toISOString().split('T')[0];
       // Auto-save so the next load finds the DSP and doesn't re-generate
