@@ -61,6 +61,59 @@ export default function ActionResponseMatrix({ data = [], onChange, editable = f
         const confInterval = item.confidence_interval || { lower: probability - 15, upper: probability + 10 };
         const probStyle = getProbabilityStyle(probability);
 
+        // Read-only mode: probability sits inline top-right, text uses full width.
+        if (!editable) {
+          return (
+            <div key={index} style={{ padding: 20, borderRadius: 16, background: cardBg, border: `1px solid ${cardBorder}` }}>
+              {/* Top row: trigger (full width) + compact probability badge */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 14 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={sectionLabel('#f59e0b')}>TRIGGER EVENT</div>
+                  <p style={{ color: t.text, margin: 0, fontSize: 14 }}>{trigger}</p>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
+                  <div style={{ padding: '10px 18px', borderRadius: 12, textAlign: 'center', minWidth: 96, background: probStyle.bg, border: `1px solid ${probStyle.border}` }}>
+                    <p style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.1em', color: probStyle.color, opacity: 0.8, margin: '0 0 2px' }}>Probability</p>
+                    <p style={{ fontSize: 24, fontWeight: 300, color: probStyle.color, margin: 0 }}>{probability}%</p>
+                  </div>
+                  <span style={{ fontSize: 11, fontFamily: 'monospace', color: t.muted }}>
+                    CI: [{confInterval.lower}%, {confInterval.upper}%]
+                  </span>
+                </div>
+              </div>
+
+              {/* Full-width content */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {context && (
+                  <div>
+                    <div style={sectionLabel(t.label)}>
+                      <AlertCircle style={{ width: 11, height: 11 }} />
+                      CONTEXTUAL FACTORS
+                    </div>
+                    <p style={{ color: t.muted, margin: 0, fontSize: 13 }}>{context}</p>
+                  </div>
+                )}
+                <div>
+                  <div style={sectionLabel('#10b981')}>
+                    <TrendingUp style={{ width: 11, height: 11 }} />
+                    PREDICTED BEHAVIOR
+                  </div>
+                  <p style={{ color: t.text, margin: 0, fontSize: 14, lineHeight: 1.65 }}>{behavior}</p>
+                </div>
+                {temporal && (
+                  <div>
+                    <div style={sectionLabel('#8b5cf6')}>
+                      <Clock style={{ width: 11, height: 11 }} />
+                      TEMPORAL FACTORS
+                    </div>
+                    <p style={{ color: t.muted, margin: 0, fontSize: 13 }}>{temporal}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        }
+
         return (
           <div key={index} style={{ padding: 20, borderRadius: 16, background: cardBg, border: `1px solid ${cardBorder}` }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
