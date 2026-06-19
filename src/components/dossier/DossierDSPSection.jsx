@@ -1,9 +1,12 @@
 import React from 'react';
 import { useTheme } from '../theme/ThemeProvider';
 import { light, dark } from '../ui/LiquidGlass';
-import { FileText, Brain, GitBranch, Target, Shield, CheckCircle2 } from 'lucide-react';
-import PersonalityMatrix from '../review/PersonalityMatrix';
+import { FileText, Brain, GitBranch, Target, CheckCircle2 } from 'lucide-react';
 import ActionResponseMatrix from '../review/ActionResponseMatrix';
+import PersonalityMatrixOverview from '../dsp/PersonalityMatrixOverview';
+import CognitiveArchitectureView from '../dsp/CognitiveArchitectureView';
+import BehavioralPatternsView from '../dsp/BehavioralPatternsView';
+import DriversView from '../dsp/DriversView';
 
 function SectionPanel({ icon, title, children }) {
   const { isDark } = useTheme();
@@ -43,49 +46,38 @@ export default function DossierDSPSection({ subject, dsp }) {
 
       {/* Personality Matrix */}
       <SectionPanel icon={<Brain style={{ width: 15, height: 15, color: '#8b5cf6' }} />} title="Personality Matrix">
-        <PersonalityMatrix data={dsp.personality_matrix} editable={false} />
+        <PersonalityMatrixOverview data={dsp.personality_matrix} />
       </SectionPanel>
 
       {/* Cognitive Architecture */}
       {dsp.cognitive_architecture && (
         <SectionPanel icon={<Brain style={{ width: 15, height: 15, color: '#8b5cf6' }} />} title="Cognitive Architecture">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            {[
-              ['Thinking Style', dsp.cognitive_architecture.thinking_style],
-              ['Epistemic Requirements', dsp.cognitive_architecture.epistemic_requirements],
-              ['Defense Mechanisms', dsp.cognitive_architecture.defense_mechanisms],
-            ].filter(([, v]) => v).map(([label, value]) => (
-              <div key={label}>
-                <h4 style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.12em', color: t.label, marginBottom: 6 }}>{label}</h4>
-                <p style={{ color: t.text, lineHeight: 1.7, margin: 0 }}>{value}</p>
+          {(() => {
+            const ca = dsp.cognitive_architecture;
+            const hasFlow = !!(ca.thinking_style || ca.epistemic_requirements || ca.defense_mechanisms || ca.sub_sections?.length);
+            if (hasFlow) return <CognitiveArchitectureView cognitiveArchitecture={ca} />;
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                {[
+                  ['Thinking Style', ca.thinking_style],
+                  ['Epistemic Requirements', ca.epistemic_requirements],
+                  ['Defense Mechanisms', ca.defense_mechanisms],
+                ].filter(([, v]) => v).map(([label, value]) => (
+                  <div key={label}>
+                    <h4 style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.12em', color: t.label, marginBottom: 6 }}>{label}</h4>
+                    <p style={{ color: t.text, lineHeight: 1.7, margin: 0 }}>{value}</p>
+                  </div>
+                ))}
               </div>
-            ))}
-            {dsp.cognitive_architecture?.sub_sections?.map((section, i) => (
-              <div key={i}>
-                <h4 style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.12em', color: t.label, marginBottom: 6 }}>{section.title}</h4>
-                <p style={{ color: t.text, lineHeight: 1.7, margin: 0 }}>{section.content}</p>
-              </div>
-            ))}
-          </div>
+            );
+          })()}
         </SectionPanel>
       )}
 
       {/* Behavioral Patterns */}
       {dsp.behavioral_patterns?.length > 0 && (
         <SectionPanel icon={<GitBranch style={{ width: 15, height: 15, color: '#10b981' }} />} title="Behavioral Patterns">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {dsp.behavioral_patterns.map((pattern, index) => (
-              <div key={index} style={{
-                padding: 16, borderRadius: 14,
-                background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
-                border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'}`,
-              }}>
-                <h4 style={{ fontSize: 13, fontWeight: 500, color: t.accent, marginBottom: 6 }}>{pattern.label}</h4>
-                <p style={{ color: t.text, lineHeight: 1.6, marginBottom: 6, fontSize: 14 }}>{pattern.description}</p>
-                <p style={{ fontSize: 12, color: t.muted, fontStyle: 'italic', margin: 0 }}>{pattern.context}</p>
-              </div>
-            ))}
-          </div>
+          <BehavioralPatternsView patterns={dsp.behavioral_patterns} />
         </SectionPanel>
       )}
 
@@ -94,32 +86,10 @@ export default function DossierDSPSection({ subject, dsp }) {
         <ActionResponseMatrix data={dsp.action_response_matrix || []} editable={false} />
       </SectionPanel>
 
-      {/* Motivations & Fears */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
-        <SectionPanel icon={<Target style={{ width: 15, height: 15, color: '#10b981' }} />} title="Core Motivations">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {dsp.motivations?.length > 0 ? dsp.motivations.map((item, i) => (
-              <div key={i} style={{
-                padding: '8px 14px', borderRadius: 10, fontSize: 13,
-                background: 'rgba(16,185,129,0.10)', color: '#10b981',
-                border: '1px solid rgba(16,185,129,0.20)',
-              }}>{item}</div>
-            )) : <p style={{ fontSize: 13, color: t.muted }}>No motivations identified</p>}
-          </div>
-        </SectionPanel>
-
-        <SectionPanel icon={<Shield style={{ width: 15, height: 15, color: '#f43f5e' }} />} title="Core Fears">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {dsp.fears?.length > 0 ? dsp.fears.map((item, i) => (
-              <div key={i} style={{
-                padding: '8px 14px', borderRadius: 10, fontSize: 13,
-                background: 'rgba(244,63,94,0.10)', color: '#f43f5e',
-                border: '1px solid rgba(244,63,94,0.20)',
-              }}>{item}</div>
-            )) : <p style={{ fontSize: 13, color: t.muted }}>No fears identified</p>}
-          </div>
-        </SectionPanel>
-      </div>
+      {/* Core Drivers — motivations & fears, paired by semantic axis where clear */}
+      <SectionPanel icon={<Target style={{ width: 15, height: 15, color: '#10b981' }} />} title="Core Drivers">
+        <DriversView motivations={dsp.motivations || []} fears={dsp.fears || []} />
+      </SectionPanel>
 
       {/* Final Assessment */}
       {dsp.final_assessment && (

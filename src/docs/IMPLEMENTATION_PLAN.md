@@ -5,6 +5,23 @@
 
 ---
 
+## PHASE 4 — DSP & Dossier Readability Refinement ✅ (2026-06-19)
+
+Presentation-layer only. No backend / prompt / schema / export changes. Restructured the dense analytical middle of the DSP Report and Unified Dossier (legacy DSP section) into summary-first, expandable Apollo-glass components. Executive Summary, Final Assessment, and Predictive Model percentages left fully intact.
+
+**New components (`components/dsp/`):**
+- `Collapsible.jsx` — accessible expand/collapse primitive (aria-expanded/controls, reduced-motion aware)
+- `summarize.js` — excerpt helpers (truncate-only, never rewrites generated text)
+- `PersonalityMatrixOverview.jsx` — 5 traits compact (name/%/bar/1-line), expand → full evidence + indicators
+- `CognitiveArchitectureView.jsx` — compact process flow from existing fields/sub_sections; expand nodes → full text; falls back to original layout when unparseable
+- `BehavioralPatternsView.jsx` — summary-first pattern cards, expand → full description + context
+- `DriversView.jsx` — pairs motivations↔fears by semantic axis when clear; unpaired remain standalone; expand → full wording
+- `ConfidenceDetails.jsx` — long confidence justification tucked into expandable area; % stays prominent
+
+**Wired into:** `pages/DSPReport`, `components/dossier/DossierDSPSection` (legacy fallback). Bottom padding increased (80→140) so nav/search never obscures final lines. Original editable `components/review/PersonalityMatrix` untouched (still used by SubjectReview).
+
+---
+
 ## INCIDENT LOG
 
 | Date | Incident | Root Cause | Resolution |
