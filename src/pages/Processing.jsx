@@ -79,15 +79,15 @@ export default function Processing() {
       if (['m4a', 'mp3', 'wav', 'mp4', 'mov'].includes(ext)) {
         try {
           const acousticAnalysis = await base44.functions.invoke('analyzeAudio', { file_url: url });
-          const humeData = acousticAnalysis.data?.predictions ?? acousticAnalysis.data;
+          const emotionData = acousticAnalysis.data?.predictions ?? acousticAnalysis.data;
           const transcript = acousticAnalysis.data?.transcript || null;
           if (transcript) {
-            info.push(`${ext.toUpperCase()} processed: prosody analyzed + transcript generated via AssemblyAI for ${fileName}`);
+            info.push(`${ext.toUpperCase()} processed: emotion analyzed via Imentiv + transcript generated via AssemblyAI for ${fileName}`);
           } else {
-            info.push(`${ext.toUpperCase()} processed: prosody analyzed, transcript unavailable for ${fileName}`);
+            info.push(`${ext.toUpperCase()} processed: emotion analyzed via Imentiv, transcript unavailable for ${fileName}`);
           }
           const mediaType = (ext === 'mp4' || ext === 'mov') ? 'Video' : 'Audio';
-          enhancedPrompt = (enhancedPrompt || '') + `\n\n${mediaType} analysis for ${fileName}:\nEmotion Data: ${JSON.stringify(humeData)}\n${transcript ? `Verbatim Transcript: ${transcript}` : 'Transcript: unavailable'}`;
+          enhancedPrompt = (enhancedPrompt || '') + `\n\n${mediaType} analysis for ${fileName}:\nEmotion Data: ${JSON.stringify(emotionData)}\n${transcript ? `Verbatim Transcript: ${transcript}` : 'Transcript: unavailable'}`;
         } catch (error) {
           info.push(`${ext.toUpperCase()} processing failed for ${fileName}: ${error.message}`);
           throw new Error(`${ext === 'mp4' || ext === 'mov' ? 'Video' : 'Audio'} processing failed: ${fileName}`);
