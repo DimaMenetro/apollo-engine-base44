@@ -28,14 +28,18 @@
     "stage": {
       "type": "string",
       "enum": [
-        "narrative_a",
-        "narrative_b",
+        "identity",
+        "psychodynamic",
+        "personality",
+        "behavioral",
+        "predictive",
+        "drivers",
         "convergence_map",
         "final_assessment",
         "confidence_methodology"
       ],
-      "default": "narrative_a",
-      "description": "Which Opus synthesis pass runs next. Synthesis is split across FIVE sequential worker passes (one Opus call each) so no single invocation exceeds the deterministic 120s proxy read timeout. narrative_a = identity/psychodynamic/personality sections; narrative_b = behavioral/predictive/drivers sections; convergence_map = the convergence+divergence analysis; final_assessment = the single-voice definitive portrait; confidence_methodology = synthesis confidence + methodology note and final completion. EVERY stage receives the identical full DSP+ESP context (dspSummary, espSummary, systemContext) \u2014 no summarization, no trimming, no model change, no schema simplification. The split changes only per-call wall time, never fidelity."
+      "default": "identity",
+      "description": "Which Opus synthesis pass runs next. Synthesis is split across NINE sequential worker passes \u2014 ONE Opus call per output unit \u2014 so no single invocation approaches the deterministic 120s proxy read timeout. Each dense narrative section (~6k chars) is its own call: identity, psychodynamic, personality, behavioral, predictive, drivers. Then convergence_map = the convergence+divergence analysis; final_assessment = the single-voice definitive portrait; confidence_methodology = synthesis confidence + methodology note and final completion. EVERY stage receives the identical full DSP+ESP context (dspSummary, espSummary, systemContext) \u2014 no summarization, no trimming, no model change, no schema simplification. Opus generation time scales with output length, so one section per call keeps every call well below the wall. The split changes only per-call wall time, never fidelity."
     },
     "attempts": {
       "type": "number",

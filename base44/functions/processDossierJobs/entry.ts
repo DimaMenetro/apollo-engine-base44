@@ -13,11 +13,17 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
  *   A single Opus synthesis call on the full DSP+ESP context runs ~180s, which
  *   exceeds the deterministic 120s proxy read timeout. Retry-grinding is NOT a
  *   solution — the wall is deterministic, so reliability requires each single
- *   Opus call to finish BELOW it. We therefore split synthesis into five
- *   sequential passes, each producing a smaller slice of output:
+ *   Opus call to finish BELOW it. Opus generation time scales with OUTPUT
+ *   length, and each dense woven section is ~6k chars; three per call measured
+ *   ~123s (still over the wall). So we split to ONE output unit per call —
+ *   nine sequential passes:
  *
- *     narrative_a            → sections 1-3 (identity, psychodynamic, personality)
- *     narrative_b            → sections 4-6 (behavioral, predictive, drivers)
+ *     identity               → section 1 (unified identity portrait)
+ *     psychodynamic          → section 2 (psychodynamic architecture)
+ *     personality            → section 3 (personality & archetypal resonance)
+ *     behavioral             → section 4 (behavioral topology)
+ *     predictive             → section 5 (predictive convergence model)
+ *     drivers                → section 6 (core drivers & shadow material)
  *     convergence_map        → convergence/divergence analysis
  *     final_assessment       → the single-voice definitive portrait
  *     confidence_methodology → synthesis confidence + methodology note; COMPLETE
@@ -43,10 +49,15 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 const STALE_RUNNING_MS = 5 * 60 * 1000; // running longer than this = presumed-dead worker, reclaimable
 
-// Ordered pipeline. Each stage advances to the next; the last stage completes.
+// Ordered pipeline — ONE Opus output unit per stage. Each stage advances to the
+// next; the last stage completes.
 const STAGE_ORDER = [
-  'narrative_a',
-  'narrative_b',
+  'identity',
+  'psychodynamic',
+  'personality',
+  'behavioral',
+  'predictive',
+  'drivers',
   'convergence_map',
   'final_assessment',
   'confidence_methodology',
@@ -97,7 +108,7 @@ Deno.serve(async (req) => {
 
       if (!isClaimable) continue; // another worker already took it
 
-      const stage = STAGE_ORDER.includes(fresh.stage) ? fresh.stage : 'narrative_a';
+      const stage = STAGE_ORDER.includes(fresh.stage) ? fresh.stage : 'identity';
 
       const claimed = await svc.entities.DossierJob.update(fresh.id, {
         status: 'running',
@@ -190,8 +201,12 @@ Deno.serve(async (req) => {
 // ── STAGE DISPATCH ──────────────────────────────────────────────────────────
 async function runStage(svc, subject, stage) {
   switch (stage) {
-    case 'narrative_a':            return runNarrativeA(svc, subject);
-    case 'narrative_b':            return runNarrativeB(svc, subject);
+    case 'identity':               return runIdentity(svc, subject);
+    case 'psychodynamic':          return runPsychodynamic(svc, subject);
+    case 'personality':            return runPersonality(svc, subject);
+    case 'behavioral':             return runBehavioral(svc, subject);
+    case 'predictive':             return runPredictive(svc, subject);
+    case 'drivers':                return runDrivers(svc, subject);
     case 'convergence_map':        return runConvergenceMap(svc, subject);
     case 'final_assessment':       return runFinalAssessment(svc, subject);
     case 'confidence_methodology': return runConfidenceMethodology(svc, subject);
@@ -259,67 +274,91 @@ async function mergeDossier(svc, subjectId, fields) {
 }
 
 
-// ── STAGE 1 — narrative_a: identity + psychodynamic + personality ───────────
-async function runNarrativeA(svc, subject) {
+// Every narrative stage shares this preamble — one section per Opus call.
+function narrativePrompt(subject, sectionInstruction) {
+  const { systemContext, dspSummary, espSummary } = buildSynthesisContext(subject);
+  return `${systemContext}${dataBlock(dspSummary, espSummary)}
+
+Produce the following unified section. It must integrate BOTH lenses into a single woven narrative:
+
+${sectionInstruction}`;
+}
+
+// ── STAGE 1 — identity: unified identity portrait ───────────────────────────
+async function runIdentity(svc, subject) {
   const dsp = subject.dsp;
   const esp = subject.esoteric_profile;
   const today = new Date().toISOString().split('T')[0];
-  const { systemContext, dspSummary, espSummary } = buildSynthesisContext(subject);
 
-  const prompt = `${systemContext}${dataBlock(dspSummary, espSummary)}
+  const prompt = narrativePrompt(subject,
+    `UNIFIED IDENTITY PORTRAIT (4-5 paragraphs): Merge the DSP executive summary with the esoteric inquiry frame and unified emotional synthesis. Who IS this person when seen through both lenses simultaneously?`);
 
-Produce these unified sections. Each must integrate BOTH lenses into a single woven narrative:
-
-1. UNIFIED IDENTITY PORTRAIT (4-5 paragraphs): Merge the DSP executive summary with the esoteric inquiry frame and unified emotional synthesis. Who IS this person when seen through both lenses simultaneously?
-
-2. PSYCHODYNAMIC ARCHITECTURE (3-4 paragraphs): Merge DSP cognitive architecture (thinking style, epistemic requirements, defense mechanisms) with the astrological interpretation. How do the subject's cognitive patterns align with or diverge from their planetary activations?
-
-3. PERSONALITY & ARCHETYPAL RESONANCE (3-4 paragraphs): Merge the Big Five personality matrix with the numerological interpretation. Reference specific scores alongside cycle positions. Where does the empirical personality confirm or challenge the archetypal structure?`;
-
-  const schema = {
-    unified_identity_portrait: { type: 'string' },
-    psychodynamic_architecture: { type: 'string' },
-    personality_archetypal_resonance: { type: 'string' },
-  };
-
-  const out = unwrapLLM(await llmOpus(svc, prompt, schema));
+  const out = unwrapLLM(await llmOpus(svc, prompt, { unified_identity_portrait: { type: 'string' } }));
 
   await mergeDossier(svc, subject.id, {
     date_synthesized: today,
     dsp_source_date: dsp.date_of_synthesis || '',
     esoteric_source_date: esp.date_executed || '',
     unified_identity_portrait: out.unified_identity_portrait || '',
+  });
+}
+
+// ── STAGE 2 — psychodynamic: psychodynamic architecture ─────────────────────
+async function runPsychodynamic(svc, subject) {
+  const prompt = narrativePrompt(subject,
+    `PSYCHODYNAMIC ARCHITECTURE (3-4 paragraphs): Merge DSP cognitive architecture (thinking style, epistemic requirements, defense mechanisms) with the astrological interpretation. How do the subject's cognitive patterns align with or diverge from their planetary activations?`);
+
+  const out = unwrapLLM(await llmOpus(svc, prompt, { psychodynamic_architecture: { type: 'string' } }));
+
+  await mergeDossier(svc, subject.id, {
     psychodynamic_architecture: out.psychodynamic_architecture || '',
+  });
+}
+
+// ── STAGE 3 — personality: personality & archetypal resonance ───────────────
+async function runPersonality(svc, subject) {
+  const prompt = narrativePrompt(subject,
+    `PERSONALITY & ARCHETYPAL RESONANCE (3-4 paragraphs): Merge the Big Five personality matrix with the numerological interpretation. Reference specific scores alongside cycle positions. Where does the empirical personality confirm or challenge the archetypal structure?`);
+
+  const out = unwrapLLM(await llmOpus(svc, prompt, { personality_archetypal_resonance: { type: 'string' } }));
+
+  await mergeDossier(svc, subject.id, {
     personality_archetypal_resonance: out.personality_archetypal_resonance || '',
   });
 }
 
+// ── STAGE 4 — behavioral: behavioral topology ───────────────────────────────
+async function runBehavioral(svc, subject) {
+  const prompt = narrativePrompt(subject,
+    `BEHAVIORAL TOPOLOGY (3-4 paragraphs): Merge behavioral patterns with the threshold assessment. Is the subject's observed behavioral loop congruent with their esoteric phase? What does the combination reveal?`);
 
-// ── STAGE 2 — narrative_b: behavioral + predictive + drivers ────────────────
-async function runNarrativeB(svc, subject) {
-  const { systemContext, dspSummary, espSummary } = buildSynthesisContext(subject);
-
-  const prompt = `${systemContext}${dataBlock(dspSummary, espSummary)}
-
-Produce these unified sections. Each must integrate BOTH lenses into a single woven narrative:
-
-4. BEHAVIORAL TOPOLOGY (3-4 paragraphs): Merge behavioral patterns with the threshold assessment. Is the subject's observed behavioral loop congruent with their esoteric phase? What does the combination reveal?
-
-5. PREDICTIVE CONVERGENCE MODEL (3-4 paragraphs): Merge the action/response matrix (triggers, predicted behaviors, probabilities) with the strategic translation. Where do empirical predictions and esoteric guidance point in the same direction? Where do they diverge?
-
-6. CORE DRIVERS & SHADOW MATERIAL (2-3 paragraphs): Merge motivations/fears with the limitation statement. What drives this person at the deepest level when both lenses are applied?`;
-
-  const schema = {
-    behavioral_topology: { type: 'string' },
-    predictive_convergence_model: { type: 'string' },
-    core_drivers_shadow: { type: 'string' },
-  };
-
-  const out = unwrapLLM(await llmOpus(svc, prompt, schema));
+  const out = unwrapLLM(await llmOpus(svc, prompt, { behavioral_topology: { type: 'string' } }));
 
   await mergeDossier(svc, subject.id, {
     behavioral_topology: out.behavioral_topology || '',
+  });
+}
+
+// ── STAGE 5 — predictive: predictive convergence model ──────────────────────
+async function runPredictive(svc, subject) {
+  const prompt = narrativePrompt(subject,
+    `PREDICTIVE CONVERGENCE MODEL (3-4 paragraphs): Merge the action/response matrix (triggers, predicted behaviors, probabilities) with the strategic translation. Where do empirical predictions and esoteric guidance point in the same direction? Where do they diverge?`);
+
+  const out = unwrapLLM(await llmOpus(svc, prompt, { predictive_convergence_model: { type: 'string' } }));
+
+  await mergeDossier(svc, subject.id, {
     predictive_convergence_model: out.predictive_convergence_model || '',
+  });
+}
+
+// ── STAGE 6 — drivers: core drivers & shadow material ───────────────────────
+async function runDrivers(svc, subject) {
+  const prompt = narrativePrompt(subject,
+    `CORE DRIVERS & SHADOW MATERIAL (2-3 paragraphs): Merge motivations/fears with the limitation statement. What drives this person at the deepest level when both lenses are applied?`);
+
+  const out = unwrapLLM(await llmOpus(svc, prompt, { core_drivers_shadow: { type: 'string' } }));
+
+  await mergeDossier(svc, subject.id, {
     core_drivers_shadow: out.core_drivers_shadow || '',
   });
 }
