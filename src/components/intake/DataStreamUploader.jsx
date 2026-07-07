@@ -223,7 +223,7 @@ export default function DataStreamUploader({ streamKey, files, onFilesChange }) 
         </div>
         
         {files.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-slate-800 space-y-2">
+          <div className="relative z-10 mt-4 pt-4 border-t border-slate-800 space-y-2">
             {files.map((url, index) => (
               <div 
                 key={index}
@@ -233,7 +233,9 @@ export default function DataStreamUploader({ streamKey, files, onFilesChange }) 
                   {url.split('/').pop()}
                 </span>
                 <button
+                  type="button"
                   onClick={(e) => {
+                    e.preventDefault();
                     e.stopPropagation();
                     removeFile(index);
                   }}
