@@ -9,6 +9,7 @@ import { useAccessory } from '../components/ui/AccessoryContext';
 import { ArrowLeft, ArrowRight, Loader2, FileText, Brain, PenTool, Activity, GitBranch, AlertTriangle } from 'lucide-react';
 import AnalysisModule from '../components/processing/AnalysisModule';
 import { motion, AnimatePresence } from 'framer-motion';
+import { validateFileUrl } from '../lib/validateFileUrl';
 
 const analysisModules = [
   { key: 'stylometric_fingerprint', title: 'Module 4.1: Text Logic',       description: 'Extract syntax patterns + word choice',              outputLabel: 'Stylometric Fingerprint', icon: FileText,   color: 'amber',   requiredStream: 'stream_a_text'       },
@@ -63,6 +64,7 @@ export default function Processing() {
 
       if (ext === 'xlsx') {
         try {
+          validateFileUrl(url); // SSRF guard: only trusted https storage hosts
           const csvData = await base44.integrations.Core.InvokeLLM({
             prompt: `Convert this XLSX file to CSV format. Extract the first sheet. Return ONLY the CSV data with comma-separated values, no explanation.`,
             file_urls: [url],

@@ -20,8 +20,9 @@ const ALLOWED_ORIGINS = [
 
 function corsHeaders(req) {
   const origin = req.headers.get("origin") || "";
-  const allowed = ALLOWED_ORIGINS.includes(origin)
-    || /^https:\/\/([a-z0-9-]+\.)*base44\.(app|com)$/i.test(origin);
+  // Reflect ONLY explicitly allowlisted origins — never a wildcard-matched
+  // subdomain, since this endpoint returns authenticated user data.
+  const allowed = ALLOWED_ORIGINS.includes(origin);
   return {
     "Access-Control-Allow-Origin": allowed ? origin : ALLOWED_ORIGINS[0],
     "Vary": "Origin",
