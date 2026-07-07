@@ -129,6 +129,12 @@ Deno.serve(async (req) => {
     const subject = subjects?.[0];
     if (!subject) return Response.json({ error: 'Subject not found' }, { status: 404 });
 
+    // ── Ownership guard: enforce RLS boundary manually since we use asServiceRole ──
+    // Only the creator or an admin may access this subject's private profile data.
+    if (subject.created_by_id !== user.id && user.role !== 'admin') {
+      return Response.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const theme = THEMES[color_theme] || THEMES.dark;
     const dsp = subject.dsp || {};
     const esp = subject.esoteric_profile || null;
