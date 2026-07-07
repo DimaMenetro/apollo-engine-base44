@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
         subject_id,
         job_type: 'synthesize_dossier',
         status: 'queued',
-        stage: 'narrative', // first of two Opus passes
+        stage: 'narrative_a', // first of five sequential Opus passes
         attempts: 0,
         max_attempts: 3,
         idempotency_key: `${subject_id}:synthesize_dossier`,

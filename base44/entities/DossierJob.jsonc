@@ -28,11 +28,14 @@
     "stage": {
       "type": "string",
       "enum": [
-        "narrative",
-        "convergence"
+        "narrative_a",
+        "narrative_b",
+        "convergence_map",
+        "final_assessment",
+        "confidence_methodology"
       ],
-      "default": "narrative",
-      "description": "Which Opus synthesis pass runs next. The synthesis is split across two worker passes (one Opus call each) so no single invocation exceeds the 120s proxy timeout. 'narrative' produces the six woven sections; 'convergence' produces the convergence map + final assessment. Both passes receive the identical full DSP+ESP context \u2014 the split changes timing, not fidelity."
+      "default": "narrative_a",
+      "description": "Which Opus synthesis pass runs next. Synthesis is split across FIVE sequential worker passes (one Opus call each) so no single invocation exceeds the deterministic 120s proxy read timeout. narrative_a = identity/psychodynamic/personality sections; narrative_b = behavioral/predictive/drivers sections; convergence_map = the convergence+divergence analysis; final_assessment = the single-voice definitive portrait; confidence_methodology = synthesis confidence + methodology note and final completion. EVERY stage receives the identical full DSP+ESP context (dspSummary, espSummary, systemContext) \u2014 no summarization, no trimming, no model change, no schema simplification. The split changes only per-call wall time, never fidelity."
     },
     "attempts": {
       "type": "number",

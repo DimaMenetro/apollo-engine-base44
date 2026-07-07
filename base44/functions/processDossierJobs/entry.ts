@@ -1,29 +1,56 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 /**
- * processDossierJobs — The queue worker.
+ * processDossierJobs — The queue worker (FIVE-STAGE Opus pipeline).
  *
  * TWO ENTRY MODES:
- *   1. Immediate kick from enqueueDossierSynthesis with { job_id } — processes
- *      that one job right away (common case; user waits only seconds).
+ *   1. Immediate kick from enqueueDossierSynthesis / the previous stage with
+ *      { job_id } — processes that one job right away.
  *   2. Scheduled tick with no payload — the safety net. Scans for queued jobs
  *      (and stale-running jobs whose worker died) and processes a small batch.
  *
+ * WHY FIVE STAGES:
+ *   A single Opus synthesis call on the full DSP+ESP context runs ~180s, which
+ *   exceeds the deterministic 120s proxy read timeout. Retry-grinding is NOT a
+ *   solution — the wall is deterministic, so reliability requires each single
+ *   Opus call to finish BELOW it. We therefore split synthesis into five
+ *   sequential passes, each producing a smaller slice of output:
+ *
+ *     narrative_a            → sections 1-3 (identity, psychodynamic, personality)
+ *     narrative_b            → sections 4-6 (behavioral, predictive, drivers)
+ *     convergence_map        → convergence/divergence analysis
+ *     final_assessment       → the single-voice definitive portrait
+ *     confidence_methodology → synthesis confidence + methodology note; COMPLETE
+ *
+ *   FIDELITY IS PRESERVED ABSOLUTELY: every stage receives the identical full
+ *   context (systemContext + dspSummary + espSummary). No summarization, no
+ *   trimming, no model change, no schema simplification. Model stays
+ *   claude_opus_4_6. The split changes only per-call wall time.
+ *
  * EXECUTION MODEL:
- *   Runs as service-role (no user context on a schedule). Ownership was already
- *   enforced at enqueue time; this worker trusts the queue. It does NOT re-check
- *   RLS — per operator constraint #1.
+ *   Runs as service-role. Ownership was enforced at enqueue time; this worker
+ *   trusts the queue and does NOT re-check RLS (operator constraint #1).
  *
- *   Race-safe claim (constraint #3): a job is only processed if this worker
- *   successfully transitions it queued -> running. We re-read immediately before
- *   flipping and skip any job already claimed by another tick.
+ *   Race-safe claim (constraint #3): a job is processed only if this worker
+ *   transitions it queued -> running. We re-read immediately before flipping
+ *   and skip any job already claimed by another tick.
  *
- *   Retry/backoff: on failure, increment attempts. If attempts < max_attempts,
- *   return the job to 'queued' (the next scheduled tick retries). Once attempts
- *   reach max_attempts, mark the job and the Subject 'failed' with the error.
+ *   Each stage persists ONLY its own fields into Subject.unified_dossier (merged
+ *   over a fresh re-read so no stage clobbers a prior stage's output), then
+ *   advances job.stage and requeues with a fresh attempt budget. The final
+ *   stage marks the job complete and Subject.dossier_status = 'complete'.
  */
 
 const STALE_RUNNING_MS = 5 * 60 * 1000; // running longer than this = presumed-dead worker, reclaimable
+
+// Ordered pipeline. Each stage advances to the next; the last stage completes.
+const STAGE_ORDER = [
+  'narrative_a',
+  'narrative_b',
+  'convergence_map',
+  'final_assessment',
+  'confidence_methodology',
+];
 
 Deno.serve(async (req) => {
   try {
@@ -70,7 +97,7 @@ Deno.serve(async (req) => {
 
       if (!isClaimable) continue; // another worker already took it
 
-      const stage = fresh.stage || 'narrative';
+      const stage = STAGE_ORDER.includes(fresh.stage) ? fresh.stage : 'narrative_a';
 
       const claimed = await svc.entities.DossierJob.update(fresh.id, {
         status: 'running',
@@ -81,46 +108,43 @@ Deno.serve(async (req) => {
 
       // Persist "work has started" BEFORE the expensive LLM synthesis begins.
       // If this worker dies mid-flight, the Subject stays at 'running' — the UI
-      // and logs then show exactly where it stopped, instead of the old
-      // "nothing changed" ambiguity. The job entity's started_at (set above)
-      // is the authoritative forensic anchor for stale-worker reclaim.
+      // and logs then show exactly where it stopped. job.started_at (above) is
+      // the authoritative forensic anchor for stale-worker reclaim.
       await svc.entities.Subject.update(claimed.subject_id, {
         dossier_status: 'running',
         dossier_error: '',
       });
 
-      // ── Execute ONE synthesis pass (one Opus call) ─────────────────────
-      // The synthesis is split across two worker passes so no single
-      // invocation exceeds the 120s proxy timeout. Each pass receives the
-      // identical full DSP+ESP context — fidelity is unchanged from the
-      // original single-invocation, two-parallel-call version.
+      // ── Execute ONE stage (one Opus call, well under 120s) ─────────────
       try {
         const subject = (await svc.entities.Subject.filter({ id: claimed.subject_id }))?.[0];
         if (!subject) throw new Error('Subject not found for job');
 
-        if (stage === 'narrative') {
-          // Pass 1: six woven narrative sections → persist, advance to convergence.
-          await runNarrativePass(svc, subject);
-          await svc.entities.DossierJob.update(claimed.id, {
-            status: 'queued',
-            stage: 'convergence',
-            attempts: 0, // fresh attempt budget for the next stage
-            error: '',
-          });
-          // Subject stays 'running' — synthesis is still in progress.
-          // Re-kick immediately so pass 2 starts within seconds.
-          try { svc.functions.invoke('processDossierJobs', { job_id: claimed.id }); } catch (_) { /* safety-net tick covers this */ }
-          processed.push({ job_id: claimed.id, result: 'narrative_done_queued_convergence' });
+        await runStage(svc, subject, stage);
 
-        } else {
-          // Pass 2: convergence map + final assessment → merge, complete.
-          await runConvergencePass(svc, subject);
+        const nextIndex = STAGE_ORDER.indexOf(stage) + 1;
+        const isFinal = nextIndex >= STAGE_ORDER.length;
+
+        if (isFinal) {
+          // Last stage (confidence_methodology) already set dossier_status='complete'.
           await svc.entities.DossierJob.update(claimed.id, {
             status: 'complete',
             completed_at: new Date().toISOString(),
             error: '',
           });
-          processed.push({ job_id: claimed.id, result: 'complete' });
+          processed.push({ job_id: claimed.id, result: 'complete', stage });
+        } else {
+          const nextStage = STAGE_ORDER[nextIndex];
+          await svc.entities.DossierJob.update(claimed.id, {
+            status: 'queued',
+            stage: nextStage,
+            attempts: 0, // fresh attempt budget per stage
+            error: '',
+          });
+          // Subject stays 'running' — synthesis is still in progress.
+          // Re-kick immediately so the next stage starts within seconds.
+          try { svc.functions.invoke('processDossierJobs', { job_id: claimed.id }); } catch (_) { /* safety-net tick covers this */ }
+          processed.push({ job_id: claimed.id, result: `${stage}_done_queued_${nextStage}` });
         }
 
       } catch (err) {
@@ -138,9 +162,10 @@ Deno.serve(async (req) => {
             dossier_status: 'failed',
             dossier_error: message,
           });
-          processed.push({ job_id: claimed.id, result: 'failed', error: message });
+          processed.push({ job_id: claimed.id, result: 'failed', stage, error: message });
         } else {
-          // Return to queue for a later scheduled retry.
+          // Return to queue for a later scheduled retry — the CURRENT stage retries,
+          // preserving all fields already persisted by earlier stages.
           await svc.entities.DossierJob.update(claimed.id, {
             status: 'queued',
             error: message,
@@ -149,7 +174,7 @@ Deno.serve(async (req) => {
             dossier_status: 'queued',
             dossier_error: '',
           });
-          processed.push({ job_id: claimed.id, result: 'retry_queued', attempts, error: message });
+          processed.push({ job_id: claimed.id, result: 'retry_queued', stage, attempts, error: message });
         }
       }
     }
@@ -162,16 +187,20 @@ Deno.serve(async (req) => {
 });
 
 
-// ── SYNTHESIS (split across two worker passes) ──────────────────────────────
-// The synthesis was originally two Opus calls run in parallel inside ONE
-// invocation — together they exceeded the 120s proxy timeout. They never
-// consumed each other's output (both take only the DSP+ESP summaries), so we
-// split them across two worker passes: pass 1 = narrative, pass 2 =
-// convergence. Prompts, schemas, model pin, and summaries are UNCHANGED, so
-// the final dossier is identical in detail and fidelity to prior runs — only
-// per-invocation wall time drops below the timeout.
+// ── STAGE DISPATCH ──────────────────────────────────────────────────────────
+async function runStage(svc, subject, stage) {
+  switch (stage) {
+    case 'narrative_a':            return runNarrativeA(svc, subject);
+    case 'narrative_b':            return runNarrativeB(svc, subject);
+    case 'convergence_map':        return runConvergenceMap(svc, subject);
+    case 'final_assessment':       return runFinalAssessment(svc, subject);
+    case 'confidence_methodology': return runConfidenceMethodology(svc, subject);
+    default: throw new Error(`Unknown stage: ${stage}`);
+  }
+}
 
-// Shared context both passes need: system framing + the two summaries.
+
+// ── FULL CONTEXT (identical for every stage — no trimming, ever) ────────────
 function buildSynthesisContext(subject) {
   const dsp = subject.dsp;
   const esp = subject.esoteric_profile;
@@ -200,6 +229,17 @@ SUBJECT: ${subjectName}`;
   return { systemContext, dspSummary, espSummary };
 }
 
+// Full DSP+ESP data block appended verbatim to every stage prompt.
+function dataBlock(dspSummary, espSummary) {
+  return `
+
+DSP DATA:
+${dspSummary}
+
+ESOTERIC DATA:
+${espSummary}`;
+}
+
 const llmOpus = (svc, prompt, schema) => svc.integrations.Core.InvokeLLM({
   model: 'claude_opus_4_6',
   prompt,
@@ -208,20 +248,25 @@ const llmOpus = (svc, prompt, schema) => svc.integrations.Core.InvokeLLM({
 
 const unwrapLLM = (r) => r?.response ?? r;
 
-// ── PASS 1 — Narrative sections ─────────────────────────────────────────────
-async function runNarrativePass(svc, subject) {
+// Re-read the current dossier and merge in this stage's fields without
+// clobbering fields written by prior stages.
+async function mergeDossier(svc, subjectId, fields) {
+  const current = (await svc.entities.Subject.filter({ id: subjectId }))?.[0]?.unified_dossier || {};
+  await svc.entities.Subject.update(subjectId, {
+    unified_dossier: { ...current, ...fields },
+    dossier_error: '',
+  });
+}
+
+
+// ── STAGE 1 — narrative_a: identity + psychodynamic + personality ───────────
+async function runNarrativeA(svc, subject) {
   const dsp = subject.dsp;
   const esp = subject.esoteric_profile;
   const today = new Date().toISOString().split('T')[0];
   const { systemContext, dspSummary, espSummary } = buildSynthesisContext(subject);
 
-  const narrativePrompt = `${systemContext}
-
-DSP DATA:
-${dspSummary}
-
-ESOTERIC DATA:
-${espSummary}
+  const prompt = `${systemContext}${dataBlock(dspSummary, espSummary)}
 
 Produce these unified sections. Each must integrate BOTH lenses into a single woven narrative:
 
@@ -229,7 +274,34 @@ Produce these unified sections. Each must integrate BOTH lenses into a single wo
 
 2. PSYCHODYNAMIC ARCHITECTURE (3-4 paragraphs): Merge DSP cognitive architecture (thinking style, epistemic requirements, defense mechanisms) with the astrological interpretation. How do the subject's cognitive patterns align with or diverge from their planetary activations?
 
-3. PERSONALITY & ARCHETYPAL RESONANCE (3-4 paragraphs): Merge the Big Five personality matrix with the numerological interpretation. Reference specific scores alongside cycle positions. Where does the empirical personality confirm or challenge the archetypal structure?
+3. PERSONALITY & ARCHETYPAL RESONANCE (3-4 paragraphs): Merge the Big Five personality matrix with the numerological interpretation. Reference specific scores alongside cycle positions. Where does the empirical personality confirm or challenge the archetypal structure?`;
+
+  const schema = {
+    unified_identity_portrait: { type: 'string' },
+    psychodynamic_architecture: { type: 'string' },
+    personality_archetypal_resonance: { type: 'string' },
+  };
+
+  const out = unwrapLLM(await llmOpus(svc, prompt, schema));
+
+  await mergeDossier(svc, subject.id, {
+    date_synthesized: today,
+    dsp_source_date: dsp.date_of_synthesis || '',
+    esoteric_source_date: esp.date_executed || '',
+    unified_identity_portrait: out.unified_identity_portrait || '',
+    psychodynamic_architecture: out.psychodynamic_architecture || '',
+    personality_archetypal_resonance: out.personality_archetypal_resonance || '',
+  });
+}
+
+
+// ── STAGE 2 — narrative_b: behavioral + predictive + drivers ────────────────
+async function runNarrativeB(svc, subject) {
+  const { systemContext, dspSummary, espSummary } = buildSynthesisContext(subject);
+
+  const prompt = `${systemContext}${dataBlock(dspSummary, espSummary)}
+
+Produce these unified sections. Each must integrate BOTH lenses into a single woven narrative:
 
 4. BEHAVIORAL TOPOLOGY (3-4 paragraphs): Merge behavioral patterns with the threshold assessment. Is the subject's observed behavioral loop congruent with their esoteric phase? What does the combination reveal?
 
@@ -237,68 +309,34 @@ Produce these unified sections. Each must integrate BOTH lenses into a single wo
 
 6. CORE DRIVERS & SHADOW MATERIAL (2-3 paragraphs): Merge motivations/fears with the limitation statement. What drives this person at the deepest level when both lenses are applied?`;
 
-  const narrativeSchema = {
-    unified_identity_portrait: { type: 'string' },
-    psychodynamic_architecture: { type: 'string' },
-    personality_archetypal_resonance: { type: 'string' },
+  const schema = {
     behavioral_topology: { type: 'string' },
     predictive_convergence_model: { type: 'string' },
     core_drivers_shadow: { type: 'string' },
   };
 
-  const narrative = unwrapLLM(await llmOpus(svc, narrativePrompt, narrativeSchema));
+  const out = unwrapLLM(await llmOpus(svc, prompt, schema));
 
-  // Persist the narrative sections now. Convergence fields are seeded empty and
-  // filled by pass 2, which merges into this same object.
-  const partial = {
-    date_synthesized: today,
-    dsp_source_date: dsp.date_of_synthesis || '',
-    esoteric_source_date: esp.date_executed || '',
-    unified_identity_portrait: narrative.unified_identity_portrait || '',
-    psychodynamic_architecture: narrative.psychodynamic_architecture || '',
-    personality_archetypal_resonance: narrative.personality_archetypal_resonance || '',
-    behavioral_topology: narrative.behavioral_topology || '',
-    predictive_convergence_model: narrative.predictive_convergence_model || '',
-    core_drivers_shadow: narrative.core_drivers_shadow || '',
-    convergence_map: { convergence_points: [], divergence_points: [], overall_alignment_score: 0 },
-    final_unified_assessment: '',
-    synthesis_confidence: 0,
-    synthesis_methodology_note: '',
-  };
-
-  await svc.entities.Subject.update(subject.id, {
-    unified_dossier: partial,
-    // dossier_status stays 'running' — synthesis is not complete until pass 2.
-    dossier_error: '',
+  await mergeDossier(svc, subject.id, {
+    behavioral_topology: out.behavioral_topology || '',
+    predictive_convergence_model: out.predictive_convergence_model || '',
+    core_drivers_shadow: out.core_drivers_shadow || '',
   });
 }
 
-// ── PASS 2 — Convergence map + final assessment ─────────────────────────────
-async function runConvergencePass(svc, subject) {
+
+// ── STAGE 3 — convergence_map: convergence/divergence analysis ──────────────
+async function runConvergenceMap(svc, subject) {
   const { systemContext, dspSummary, espSummary } = buildSynthesisContext(subject);
 
-  const convergencePrompt = `${systemContext}
+  const prompt = `${systemContext}${dataBlock(dspSummary, espSummary)}
 
-DSP DATA:
-${dspSummary}
-
-ESOTERIC DATA:
-${espSummary}
-
-Produce:
-
-1. CONVERGENCE MAP — Analyze where the two lenses agree and disagree:
+Produce the CONVERGENCE MAP — analyze where the two lenses agree and disagree:
    - convergence_points: Array of 4-6 objects. Each has: domain (string), dsp_evidence (what the DSP shows), esoteric_evidence (what the ESP shows), significance (why their agreement matters), confidence (0-100).
    - divergence_points: Array of 2-4 objects. Each has: domain (string), dsp_position (what DSP says), esoteric_position (what ESP says), arbitration (your integrative judgment on what the divergence reveals), tension_value (low/medium/high — how significant is the disagreement).
-   - overall_alignment_score: Integer 0-100 representing how aligned the two lenses are overall.
+   - overall_alignment_score: Integer 0-100 representing how aligned the two lenses are overall.`;
 
-2. FINAL UNIFIED ASSESSMENT (5-7 paragraphs): The single-voice definitive portrait of this subject. This is the culmination. It should read as if one brilliant analyst wrote it from complete knowledge. Reference specific data points from both domains naturally. This is the document that makes separate DSP and ESP reports unnecessary.
-
-3. SYNTHESIS CONFIDENCE: Integer 0-100 — your confidence in this synthesis.
-
-4. SYNTHESIS METHODOLOGY NOTE: 2-3 sentences on how the synthesis was conducted, what was prioritized, and any caveats.`;
-
-  const convergenceSchema = {
+  const schema = {
     convergence_map: {
       type: 'object',
       properties: {
@@ -307,26 +345,63 @@ Produce:
         overall_alignment_score: { type: 'number' }
       }
     },
+  };
+
+  const out = unwrapLLM(await llmOpus(svc, prompt, schema));
+
+  await mergeDossier(svc, subject.id, {
+    convergence_map: out.convergence_map || { convergence_points: [], divergence_points: [], overall_alignment_score: 0 },
+  });
+}
+
+
+// ── STAGE 4 — final_assessment: the single-voice definitive portrait ────────
+async function runFinalAssessment(svc, subject) {
+  const { systemContext, dspSummary, espSummary } = buildSynthesisContext(subject);
+
+  const prompt = `${systemContext}${dataBlock(dspSummary, espSummary)}
+
+Produce the FINAL UNIFIED ASSESSMENT (5-7 paragraphs): The single-voice definitive portrait of this subject. This is the culmination. It should read as if one brilliant analyst wrote it from complete knowledge. Reference specific data points from both domains naturally. This is the document that makes separate DSP and ESP reports unnecessary.`;
+
+  const schema = {
     final_unified_assessment: { type: 'string' },
+  };
+
+  const out = unwrapLLM(await llmOpus(svc, prompt, schema));
+
+  await mergeDossier(svc, subject.id, {
+    final_unified_assessment: out.final_unified_assessment || '',
+  });
+}
+
+
+// ── STAGE 5 — confidence_methodology: confidence + note; COMPLETE ───────────
+async function runConfidenceMethodology(svc, subject) {
+  const { systemContext, dspSummary, espSummary } = buildSynthesisContext(subject);
+
+  const prompt = `${systemContext}${dataBlock(dspSummary, espSummary)}
+
+Having synthesized this subject through both empirical and esoteric lenses, produce:
+
+1. SYNTHESIS CONFIDENCE: Integer 0-100 — your confidence in this synthesis.
+
+2. SYNTHESIS METHODOLOGY NOTE: 2-3 sentences on how the synthesis was conducted, what was prioritized, and any caveats.`;
+
+  const schema = {
     synthesis_confidence: { type: 'number' },
     synthesis_methodology_note: { type: 'string' },
   };
 
-  const convergence = unwrapLLM(await llmOpus(svc, convergencePrompt, convergenceSchema));
+  const out = unwrapLLM(await llmOpus(svc, prompt, schema));
 
-  // Merge into the narrative-pass object (re-read to avoid clobbering it).
+  // Final stage: merge these fields AND flip the Subject to complete atomically.
   const current = (await svc.entities.Subject.filter({ id: subject.id }))?.[0]?.unified_dossier || {};
-
-  const unifiedDossier = {
-    ...current,
-    convergence_map: convergence.convergence_map || { convergence_points: [], divergence_points: [], overall_alignment_score: 0 },
-    final_unified_assessment: convergence.final_unified_assessment || '',
-    synthesis_confidence: convergence.synthesis_confidence || 0,
-    synthesis_methodology_note: convergence.synthesis_methodology_note || '',
-  };
-
   await svc.entities.Subject.update(subject.id, {
-    unified_dossier: unifiedDossier,
+    unified_dossier: {
+      ...current,
+      synthesis_confidence: out.synthesis_confidence || 0,
+      synthesis_methodology_note: out.synthesis_methodology_note || '',
+    },
     dossier_status: 'complete',
     dossier_error: '',
   });
