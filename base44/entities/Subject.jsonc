@@ -34,12 +34,13 @@
       "enum": [
         "idle",
         "queued",
+        "running",
         "generating",
         "complete",
         "failed"
       ],
       "default": "idle",
-      "description": "Lifecycle status of the asynchronous unified dossier synthesis"
+      "description": "Lifecycle status of the asynchronous unified dossier synthesis. 'running' is persisted by the worker before the LLM synthesis begins so the UI and logs show exactly where a dead worker stopped."
     },
     "dossier_error": {
       "type": "string",

@@ -37,7 +37,8 @@ export default function UnifiedDossier() {
     // Poll every 4s while a background synthesis is running.
     refetchInterval: (query) => {
       const s = query.state.data?.[0];
-      return (s?.dossier_status === 'generating' || s?.dossier_status === 'queued') ? 4000 : false;
+      const st = s?.dossier_status;
+      return (st === 'queued' || st === 'running' || st === 'generating') ? 4000 : false;
     },
   });
 
@@ -54,7 +55,9 @@ export default function UnifiedDossier() {
   // Background synthesis runs asynchronously on the server; this reflects its
   // lifecycle via the polled dossier_status field.
   const isQueued = subject?.dossier_status === 'queued';
-  const isGenerating = subject?.dossier_status === 'generating';
+  // 'running' (worker has claimed the job, LLM synthesis in flight) and the
+  // legacy 'generating' are treated identically as active synthesis.
+  const isGenerating = subject?.dossier_status === 'running' || subject?.dossier_status === 'generating';
   const isBusy = isSynthesizing || isQueued || isGenerating;
   const backgroundError = subject?.dossier_status === 'failed' ? subject?.dossier_error : null;
 

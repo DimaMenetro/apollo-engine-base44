@@ -77,9 +77,13 @@ Deno.serve(async (req) => {
         error: '',
       });
 
-      // Reflect on Subject for the polling UI.
+      // Persist "work has started" BEFORE the expensive LLM synthesis begins.
+      // If this worker dies mid-flight, the Subject stays at 'running' — the UI
+      // and logs then show exactly where it stopped, instead of the old
+      // "nothing changed" ambiguity. The job entity's started_at (set above)
+      // is the authoritative forensic anchor for stale-worker reclaim.
       await svc.entities.Subject.update(claimed.subject_id, {
-        dossier_status: 'generating',
+        dossier_status: 'running',
         dossier_error: '',
       });
 
