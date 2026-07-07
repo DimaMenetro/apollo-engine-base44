@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
     // here because the durable job record survives even if this invoke is
     // torn down; the scheduled worker will pick it up regardless. ─────────
     try {
-      base44.functions.invoke('processDossierJobs', { job_id: job.id });
+      base44.functions.invoke('processDossierJobs', { job_id: job.id }, { headers: { 'X-Worker-Secret': Deno.env.get('WORKER_SECRET') || '' } });
     } catch (_) {
       // Non-fatal: the scheduled safety-net worker will process it.
     }

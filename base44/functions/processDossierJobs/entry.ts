@@ -67,6 +67,30 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
 
+    // ── AUTHORIZATION GATE (CWE-306 fix) ──────────────────────────────────
+    // This worker mutates job state and runs high-cost Opus calls. It must
+    // never be triggerable by an anonymous caller. Two authorized paths:
+    //   (a) a valid pre-shared worker secret (internal invokes + scheduler), or
+    //   (b) an authenticated admin (manual operator kick).
+    // Everyone else is rejected BEFORE any candidate is gathered or claimed.
+    const workerSecret = Deno.env.get('WORKER_SECRET');
+    const providedSecret = req.headers.get('X-Worker-Secret');
+    const secretOk = !!workerSecret && providedSecret === workerSecret;
+
+    let adminOk = false;
+    if (!secretOk) {
+      try {
+        const caller = await base44.auth.me();
+        adminOk = caller?.role === 'admin';
+      } catch (_) {
+        adminOk = false;
+      }
+    }
+
+    if (!secretOk && !adminOk) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     let job_id = null;
     try {
       const body = await req.json();
@@ -154,7 +178,7 @@ Deno.serve(async (req) => {
           });
           // Subject stays 'running' — synthesis is still in progress.
           // Re-kick immediately so the next stage starts within seconds.
-          try { svc.functions.invoke('processDossierJobs', { job_id: claimed.id }); } catch (_) { /* safety-net tick covers this */ }
+          try { svc.functions.invoke('processDossierJobs', { job_id: claimed.id }, { headers: { 'X-Worker-Secret': Deno.env.get('WORKER_SECRET') || '' } }); } catch (_) { /* safety-net tick covers this */ }
           processed.push({ job_id: claimed.id, result: `${stage}_done_queued_${nextStage}` });
         }
 
