@@ -29,6 +29,21 @@
       "default": "pending",
       "description": "DSP integrity status for quick health checks"
     },
+    "dossier_status": {
+      "type": "string",
+      "enum": [
+        "idle",
+        "generating",
+        "complete",
+        "failed"
+      ],
+      "default": "idle",
+      "description": "Lifecycle status of the asynchronous unified dossier synthesis"
+    },
+    "dossier_error": {
+      "type": "string",
+      "description": "Error message from the last failed asynchronous synthesis run"
+    },
     "stream_a_text": {
       "type": "array",
       "description": "Text data URLs (logs, emails, transcripts)",

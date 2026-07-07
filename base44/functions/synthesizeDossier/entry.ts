@@ -2,13 +2,20 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
 /**
  * synthesizeDossier — Phase 3b of IP-001-G-D-APL
- * 
+ *
  * MELLMA-style multi-expert arbitration: takes the DSP (empirical lens)
  * and Esoteric Profile (symbolic lens) and produces a single unified
  * narrative document where insights are woven, not concatenated.
- * 
+ *
  * The LLM acts as a senior integrative analyst who has BOTH reports
  * on their desk and writes ONE document in a single authoritative voice.
+ *
+ * EXECUTION MODEL — Asynchronous:
+ * Full-fidelity synthesis on Opus can exceed the synchronous request
+ * ceiling. This handler validates, marks the subject as `generating`,
+ * launches the heavy two-call synthesis in the background via
+ * EdgeRuntime.waitUntil, and returns immediately. The UI polls
+ * `dossier_status` and renders when it reaches `complete`.
  */
 
 Deno.serve(async (req) => {
@@ -35,6 +42,35 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Esoteric Profile not yet generated. Execute CP-012 before synthesizing.' }, { status: 400 });
     }
 
+    // ── ASYNC KICKOFF ────────────────────────────────────────────────────
+    // Mark generating, launch background work, return immediately.
+    await base44.asServiceRole.entities.Subject.update(subject_id, {
+      dossier_status: 'generating',
+      dossier_error: '',
+    });
+
+    // Launch background synthesis without awaiting — the isolate keeps the
+    // in-flight promise alive while the HTTP response returns immediately.
+    runSynthesis(base44, subject);
+
+    return Response.json({ started: true });
+
+  } catch (error) {
+    return Response.json({ error: error.message }, { status: 500 });
+  }
+});
+
+
+// ── BACKGROUND SYNTHESIS ──────────────────────────────────────────────────
+// Runs after the HTTP response has been returned. Preserves the exact
+// prompts, schemas, and parallel two-call structure. Model pinned to Opus 4.6
+// per operator directive — Gemini is forbidden under all circumstances.
+async function runSynthesis(base44, subject) {
+  const subject_id = subject.id;
+  try {
+    const dsp = subject.dsp;
+    const esp = subject.esoteric_profile;
+
     // ── Build structured summaries (not raw blobs) to manage token budget ──
     const dspSummary = buildDSPSummary(dsp);
     const espSummary = buildEsotericSummary(esp);
@@ -45,7 +81,7 @@ Deno.serve(async (req) => {
     // ── SYNTHESIS PROMPT ─────────────────────────────────────────────────
     // Two staggered calls: (1) narrative sections, (2) convergence map + final assessment
     const llm = (prompt, schema) => base44.asServiceRole.integrations.Core.InvokeLLM({
-      model: 'claude_sonnet_4_6',
+      model: 'claude_opus_4_6',
       prompt,
       response_json_schema: { type: 'object', properties: schema }
     });
@@ -165,23 +201,27 @@ Produce:
     // ── Persist ─────────────────────────────────────────────────────────
     await base44.asServiceRole.entities.Subject.update(subject_id, {
       unified_dossier: unifiedDossier,
+      dossier_status: 'complete',
+      dossier_error: '',
     });
 
-    return Response.json({ success: true, unified_dossier: unifiedDossier });
-
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    // Background failure — record it on the subject so the UI can surface it.
+    await base44.asServiceRole.entities.Subject.update(subject_id, {
+      dossier_status: 'failed',
+      dossier_error: error.message || 'Synthesis failed',
+    });
   }
-});
+}
 
 
 // ── HELPER: Build structured DSP summary ────────────────────────────────
 function buildDSPSummary(dsp) {
   const parts = [];
-  
+
   parts.push(`CLASSIFICATION: ${dsp.classification || 'Not classified'}`);
   parts.push(`CONFIDENCE: ${dsp.confidence_score || 0}% — ${dsp.confidence_justification || 'No justification'}`);
-  
+
   if (dsp.executive_summary) {
     parts.push(`\nEXECUTIVE SUMMARY:\n${dsp.executive_summary}`);
   }

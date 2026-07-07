@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useTheme } from '../components/theme/ThemeProvider';
@@ -34,6 +34,11 @@ export default function UnifiedDossier() {
     queryFn: () => base44.entities.Subject.filter({ id: subjectId }),
     enabled: !!subjectId,
     retry: 1,
+    // Poll every 4s while a background synthesis is running.
+    refetchInterval: (query) => {
+      const s = query.state.data?.[0];
+      return s?.dossier_status === 'generating' ? 4000 : false;
+    },
   });
 
   const subject = subjectData?.[0];
@@ -46,19 +51,26 @@ export default function UnifiedDossier() {
   const hasSynthesis = !!(unifiedDossier?.date_synthesized && unifiedDossier?.unified_identity_portrait);
   const canSynthesize = hasDSP && hasEsoteric;
 
+  // Background synthesis runs asynchronously on the server; this reflects its
+  // lifecycle via the polled dossier_status field.
+  const isGenerating = subject?.dossier_status === 'generating';
+  const isBusy = isSynthesizing || isGenerating;
+  const backgroundError = subject?.dossier_status === 'failed' ? subject?.dossier_error : null;
+
   const handleSynthesize = async () => {
     setIsSynthesizing(true);
     setSynthError(null);
     startProcessing(subjectId, subject.name, 'Dossier Synthesis');
     updateProgress('Synthesizing unified dossier...', 10);
     try {
+      // Fire-and-forget: the function returns immediately after kickoff.
+      // Polling (refetchInterval) then tracks dossier_status until complete.
       const res = await base44.functions.invoke('synthesizeDossier', { subject_id: subjectId });
       if (res.data?.error) {
         setSynthError(res.data.error);
         failProcessing(subjectId);
       } else {
-        updateProgress('Synthesis complete', 100);
-        finishProcessing(subjectId);
+        updateProgress('Synthesis running in the background...', 50);
         queryClient.invalidateQueries(['subject', subjectId]);
       }
     } catch (e) {
@@ -68,6 +80,17 @@ export default function UnifiedDossier() {
       setIsSynthesizing(false);
     }
   };
+
+  // React to background status transitions surfaced by polling.
+  useEffect(() => {
+    if (subject?.dossier_status === 'complete') {
+      finishProcessing(subjectId);
+    } else if (subject?.dossier_status === 'failed') {
+      failProcessing(subjectId);
+      if (subject?.dossier_error) setSynthError(subject.dossier_error);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subject?.dossier_status]);
 
   if (isLoading) {
     return (
@@ -111,16 +134,16 @@ export default function UnifiedDossier() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
           <button
             onClick={handleSynthesize}
-            disabled={isSynthesizing}
+            disabled={isBusy}
             style={{
               ...(hasSynthesis ? glassBtnSecondary(t) : glassBtn(t)),
               padding: '10px 22px', fontSize: 14,
               display: 'flex', alignItems: 'center', gap: 8,
-              opacity: isSynthesizing ? 0.6 : 1,
+              opacity: isBusy ? 0.6 : 1,
             }}
           >
-            {isSynthesizing
-              ? <><Loader2 style={{ width: 15, height: 15, animation: 'spin 1s linear infinite' }} />Synthesizing...</>
+            {isBusy
+              ? <><Loader2 style={{ width: 15, height: 15, animation: 'spin 1s linear infinite' }} />{isGenerating ? 'Synthesizing in background…' : 'Starting…'}</>
               : hasSynthesis
                 ? <><RefreshCw style={{ width: 15, height: 15 }} />Re-Synthesize</>
                 : <><Layers style={{ width: 15, height: 15 }} />Synthesize Dossier</>
@@ -137,13 +160,24 @@ export default function UnifiedDossier() {
         </div>
       )}
 
-      {synthError && (
+      {isGenerating && (
+        <div style={{
+          marginBottom: 16, padding: '10px 14px', borderRadius: 10,
+          background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)',
+          fontSize: 13, color: '#10b981', display: 'flex', alignItems: 'center', gap: 8,
+        }}>
+          <Loader2 style={{ width: 15, height: 15, animation: 'spin 1s linear infinite' }} />
+          Full-fidelity synthesis is running on the server. This can take a few minutes — the dossier will appear here automatically when complete. You can safely leave this page.
+        </div>
+      )}
+
+      {(synthError || backgroundError) && (
         <div style={{
           marginBottom: 16, padding: '10px 14px', borderRadius: 10,
           background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.25)',
           fontSize: 13, color: '#f43f5e',
         }}>
-          Synthesis failed: {synthError}
+          Synthesis failed: {synthError || backgroundError}
         </div>
       )}
 
