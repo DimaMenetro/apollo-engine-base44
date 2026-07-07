@@ -1,0 +1,87 @@
+{
+  "name": "DossierJob",
+  "type": "object",
+  "properties": {
+    "subject_id": {
+      "type": "string",
+      "description": "The Subject this synthesis job targets"
+    },
+    "job_type": {
+      "type": "string",
+      "enum": [
+        "synthesize_dossier"
+      ],
+      "default": "synthesize_dossier",
+      "description": "Kind of work this job represents"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "running",
+        "complete",
+        "failed"
+      ],
+      "default": "queued",
+      "description": "Lifecycle state of the job"
+    },
+    "attempts": {
+      "type": "number",
+      "default": 0,
+      "description": "How many times a worker has attempted this job"
+    },
+    "max_attempts": {
+      "type": "number",
+      "default": 3,
+      "description": "Maximum attempts before the job is marked failed"
+    },
+    "idempotency_key": {
+      "type": "string",
+      "description": "Prevents duplicate active jobs for the same subject (e.g. subject_id + open-job marker)"
+    },
+    "started_at": {
+      "type": "string",
+      "description": "ISO timestamp when a worker claimed and began running this job"
+    },
+    "completed_at": {
+      "type": "string",
+      "description": "ISO timestamp when the job reached a terminal state"
+    },
+    "error": {
+      "type": "string",
+      "description": "Last error message from a failed attempt"
+    }
+  },
+  "required": [
+    "subject_id"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

@@ -33,6 +33,7 @@
       "type": "string",
       "enum": [
         "idle",
+        "queued",
         "generating",
         "complete",
         "failed"

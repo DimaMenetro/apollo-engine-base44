@@ -37,7 +37,7 @@ export default function UnifiedDossier() {
     // Poll every 4s while a background synthesis is running.
     refetchInterval: (query) => {
       const s = query.state.data?.[0];
-      return s?.dossier_status === 'generating' ? 4000 : false;
+      return (s?.dossier_status === 'generating' || s?.dossier_status === 'queued') ? 4000 : false;
     },
   });
 
@@ -53,8 +53,9 @@ export default function UnifiedDossier() {
 
   // Background synthesis runs asynchronously on the server; this reflects its
   // lifecycle via the polled dossier_status field.
+  const isQueued = subject?.dossier_status === 'queued';
   const isGenerating = subject?.dossier_status === 'generating';
-  const isBusy = isSynthesizing || isGenerating;
+  const isBusy = isSynthesizing || isQueued || isGenerating;
   const backgroundError = subject?.dossier_status === 'failed' ? subject?.dossier_error : null;
 
   const handleSynthesize = async () => {
@@ -63,14 +64,14 @@ export default function UnifiedDossier() {
     startProcessing(subjectId, subject.name, 'Dossier Synthesis');
     updateProgress('Synthesizing unified dossier...', 10);
     try {
-      // Fire-and-forget: the function returns immediately after kickoff.
-      // Polling (refetchInterval) then tracks dossier_status until complete.
-      const res = await base44.functions.invoke('synthesizeDossier', { subject_id: subjectId });
+      // Enqueue a durable job. The worker (kicked immediately + scheduled
+      // safety net) runs the synthesis. Polling tracks dossier_status.
+      const res = await base44.functions.invoke('enqueueDossierSynthesis', { subject_id: subjectId });
       if (res.data?.error) {
         setSynthError(res.data.error);
         failProcessing(subjectId);
       } else {
-        updateProgress('Synthesis running in the background...', 50);
+        updateProgress('Synthesis queued...', 30);
         queryClient.invalidateQueries(['subject', subjectId]);
       }
     } catch (e) {
@@ -143,7 +144,7 @@ export default function UnifiedDossier() {
             }}
           >
             {isBusy
-              ? <><Loader2 style={{ width: 15, height: 15, animation: 'spin 1s linear infinite' }} />{isGenerating ? 'Synthesizing in background…' : 'Starting…'}</>
+              ? <><Loader2 style={{ width: 15, height: 15, animation: 'spin 1s linear infinite' }} />{isGenerating ? 'Synthesizing in background…' : isQueued ? 'Queued…' : 'Starting…'}</>
               : hasSynthesis
                 ? <><RefreshCw style={{ width: 15, height: 15 }} />Re-Synthesize</>
                 : <><Layers style={{ width: 15, height: 15 }} />Synthesize Dossier</>
@@ -160,14 +161,16 @@ export default function UnifiedDossier() {
         </div>
       )}
 
-      {isGenerating && (
+      {(isQueued || isGenerating) && (
         <div style={{
           marginBottom: 16, padding: '10px 14px', borderRadius: 10,
           background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)',
           fontSize: 13, color: '#10b981', display: 'flex', alignItems: 'center', gap: 8,
         }}>
           <Loader2 style={{ width: 15, height: 15, animation: 'spin 1s linear infinite' }} />
-          Full-fidelity synthesis is running on the server. This can take a few minutes — the dossier will appear here automatically when complete. You can safely leave this page.
+          {isQueued
+            ? 'Synthesis is queued. A worker will pick it up momentarily — the dossier will appear here automatically. You can safely leave this page.'
+            : 'Full-fidelity synthesis is running on the server. This can take a few minutes — the dossier will appear here automatically when complete. You can safely leave this page.'}
         </div>
       )}
 
