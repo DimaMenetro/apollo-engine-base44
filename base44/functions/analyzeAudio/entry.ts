@@ -11,6 +11,57 @@ const IMENTIV_HEADERS = {
   "Referer": "https://apollo.base44.app/",
 };
 
+// ── CORS: allow only trusted origins (no wildcard on authenticated fn) ──────
+const ALLOWED_ORIGINS = [
+  "https://apollo.base44.app",
+  "https://app.base44.com",
+  "https://base44.app",
+];
+
+function corsHeaders(req) {
+  const origin = req.headers.get("origin") || "";
+  const allowed = ALLOWED_ORIGINS.includes(origin)
+    || /^https:\/\/([a-z0-9-]+\.)*base44\.(app|com)$/i.test(origin);
+  return {
+    "Access-Control-Allow-Origin": allowed ? origin : ALLOWED_ORIGINS[0],
+    "Vary": "Origin",
+  };
+}
+
+// ── SSRF guard: only allow https URLs on Base44 storage, no private hosts ───
+function isPrivateHost(host) {
+  const h = host.toLowerCase();
+  if (h === "localhost" || h.endsWith(".localhost") || h.endsWith(".internal") || h.endsWith(".local")) return true;
+  // IPv4 literal ranges (private, loopback, link-local, unspecified)
+  const m = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (m) {
+    const [a, b] = [parseInt(m[1]), parseInt(m[2])];
+    if (a === 10 || a === 127 || a === 0) return true;
+    if (a === 169 && b === 254) return true;          // link-local / cloud metadata
+    if (a === 172 && b >= 16 && b <= 31) return true; // 172.16.0.0/12
+    if (a === 192 && b === 168) return true;          // 192.168.0.0/16
+  }
+  // IPv6 loopback / link-local / unique-local literals
+  if (h === "::1" || h.startsWith("[::1") || h.startsWith("[fe80") || h.startsWith("[fc") || h.startsWith("[fd")) return true;
+  return false;
+}
+
+function validateFileUrl(fileUrl) {
+  let u;
+  try {
+    u = new URL(fileUrl);
+  } catch {
+    throw new Error("Invalid file_url");
+  }
+  if (u.protocol !== "https:") throw new Error("file_url must use https");
+  if (isPrivateHost(u.hostname)) throw new Error("file_url host is not permitted");
+  const host = u.hostname.toLowerCase();
+  const allowed = /(^|\.)base44\.(app|com)$/.test(host)
+    || /(^|\.)googleapis\.com$/.test(host)
+    || /(^|\.)storage\.googleapis\.com$/.test(host);
+  if (!allowed) throw new Error("file_url host is not an allowed storage domain");
+}
+
 // ── Media type detection by file extension ────────────────────────────────
 const VIDEO_EXTENSIONS = ["mp4", "mov", "avi", "webm", "mpeg", "mpg", "m4v"];
 const AUDIO_EXTENSIONS = ["wav", "mp3", "m4a", "ogg", "oga", "flac", "aac", "wma"];
@@ -128,11 +179,13 @@ async function transcribeWithAssembly(fileUrl) {
 
 // ── Main handler ───────────────────────────────────────────────────────────
 Deno.serve(async (req) => {
+  const cors = corsHeaders(req);
+
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       status: 204,
       headers: {
-        'Access-Control-Allow-Origin': '*',
+        ...cors,
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       },
@@ -142,10 +195,17 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: cors });
 
     const { file_url } = await req.json();
-    if (!file_url) return Response.json({ error: 'file_url is required' }, { status: 400 });
+    if (!file_url) return Response.json({ error: 'file_url is required' }, { status: 400, headers: cors });
+
+    // ── SSRF guard: reject internal / non-storage URLs before any fetch ──
+    try {
+      validateFileUrl(file_url);
+    } catch (e) {
+      return Response.json({ error: e.message }, { status: 400, headers: cors });
+    }
 
     const kind = detectMediaKind(file_url);
     console.log(`analyzeAudio: processing ${kind} — ${file_url}`);
@@ -181,14 +241,14 @@ Deno.serve(async (req) => {
       media_kind: kind,
     }, {
       status: 200,
-      headers: { 'Access-Control-Allow-Origin': '*' },
+      headers: cors,
     });
 
   } catch (error) {
     console.error('analyzeAudio error:', error);
     return Response.json({ error: error.message }, {
       status: 500,
-      headers: { 'Access-Control-Allow-Origin': '*' },
+      headers: cors,
     });
   }
 });
