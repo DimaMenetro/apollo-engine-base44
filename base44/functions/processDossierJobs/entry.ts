@@ -70,6 +70,8 @@ Deno.serve(async (req) => {
 
       if (!isClaimable) continue; // another worker already took it
 
+      const stage = fresh.stage || 'narrative';
+
       const claimed = await svc.entities.DossierJob.update(fresh.id, {
         status: 'running',
         attempts: (fresh.attempts || 0) + 1,
@@ -87,19 +89,39 @@ Deno.serve(async (req) => {
         dossier_error: '',
       });
 
-      // ── Execute the heavy synthesis ────────────────────────────────────
+      // ── Execute ONE synthesis pass (one Opus call) ─────────────────────
+      // The synthesis is split across two worker passes so no single
+      // invocation exceeds the 120s proxy timeout. Each pass receives the
+      // identical full DSP+ESP context — fidelity is unchanged from the
+      // original single-invocation, two-parallel-call version.
       try {
         const subject = (await svc.entities.Subject.filter({ id: claimed.subject_id }))?.[0];
         if (!subject) throw new Error('Subject not found for job');
 
-        await runSynthesis(svc, subject);
+        if (stage === 'narrative') {
+          // Pass 1: six woven narrative sections → persist, advance to convergence.
+          await runNarrativePass(svc, subject);
+          await svc.entities.DossierJob.update(claimed.id, {
+            status: 'queued',
+            stage: 'convergence',
+            attempts: 0, // fresh attempt budget for the next stage
+            error: '',
+          });
+          // Subject stays 'running' — synthesis is still in progress.
+          // Re-kick immediately so pass 2 starts within seconds.
+          try { svc.functions.invoke('processDossierJobs', { job_id: claimed.id }); } catch (_) { /* safety-net tick covers this */ }
+          processed.push({ job_id: claimed.id, result: 'narrative_done_queued_convergence' });
 
-        await svc.entities.DossierJob.update(claimed.id, {
-          status: 'complete',
-          completed_at: new Date().toISOString(),
-          error: '',
-        });
-        processed.push({ job_id: claimed.id, result: 'complete' });
+        } else {
+          // Pass 2: convergence map + final assessment → merge, complete.
+          await runConvergencePass(svc, subject);
+          await svc.entities.DossierJob.update(claimed.id, {
+            status: 'complete',
+            completed_at: new Date().toISOString(),
+            error: '',
+          });
+          processed.push({ job_id: claimed.id, result: 'complete' });
+        }
 
       } catch (err) {
         const attempts = claimed.attempts || 1;
@@ -140,26 +162,23 @@ Deno.serve(async (req) => {
 });
 
 
-// ── SYNTHESIS ──────────────────────────────────────────────────────────────
-// Ported verbatim from the original synthesizeDossier background function.
-// `svc` is base44.asServiceRole. Prompts, schemas, model pin, and parallel
-// two-call structure are unchanged.
-async function runSynthesis(svc, subject) {
-  const subject_id = subject.id;
+// ── SYNTHESIS (split across two worker passes) ──────────────────────────────
+// The synthesis was originally two Opus calls run in parallel inside ONE
+// invocation — together they exceeded the 120s proxy timeout. They never
+// consumed each other's output (both take only the DSP+ESP summaries), so we
+// split them across two worker passes: pass 1 = narrative, pass 2 =
+// convergence. Prompts, schemas, model pin, and summaries are UNCHANGED, so
+// the final dossier is identical in detail and fidelity to prior runs — only
+// per-invocation wall time drops below the timeout.
+
+// Shared context both passes need: system framing + the two summaries.
+function buildSynthesisContext(subject) {
   const dsp = subject.dsp;
   const esp = subject.esoteric_profile;
+  const subjectName = subject.name || 'Unknown Subject';
 
   const dspSummary = buildDSPSummary(dsp);
   const espSummary = buildEsotericSummary(esp);
-
-  const today = new Date().toISOString().split('T')[0];
-  const subjectName = subject.name || 'Unknown Subject';
-
-  const llm = (prompt, schema) => svc.integrations.Core.InvokeLLM({
-    model: 'claude_opus_4_6',
-    prompt,
-    response_json_schema: { type: 'object', properties: schema }
-  });
 
   const systemContext = `You are a senior integrative analyst. You have two independent assessments of the same subject on your desk:
 
@@ -177,6 +196,24 @@ CRITICAL RULES:
 - The tone should be analytical, authoritative, and psychologically sophisticated
 
 SUBJECT: ${subjectName}`;
+
+  return { systemContext, dspSummary, espSummary };
+}
+
+const llmOpus = (svc, prompt, schema) => svc.integrations.Core.InvokeLLM({
+  model: 'claude_opus_4_6',
+  prompt,
+  response_json_schema: { type: 'object', properties: schema }
+});
+
+const unwrapLLM = (r) => r?.response ?? r;
+
+// ── PASS 1 — Narrative sections ─────────────────────────────────────────────
+async function runNarrativePass(svc, subject) {
+  const dsp = subject.dsp;
+  const esp = subject.esoteric_profile;
+  const today = new Date().toISOString().split('T')[0];
+  const { systemContext, dspSummary, espSummary } = buildSynthesisContext(subject);
 
   const narrativePrompt = `${systemContext}
 
@@ -208,6 +245,37 @@ Produce these unified sections. Each must integrate BOTH lenses into a single wo
     predictive_convergence_model: { type: 'string' },
     core_drivers_shadow: { type: 'string' },
   };
+
+  const narrative = unwrapLLM(await llmOpus(svc, narrativePrompt, narrativeSchema));
+
+  // Persist the narrative sections now. Convergence fields are seeded empty and
+  // filled by pass 2, which merges into this same object.
+  const partial = {
+    date_synthesized: today,
+    dsp_source_date: dsp.date_of_synthesis || '',
+    esoteric_source_date: esp.date_executed || '',
+    unified_identity_portrait: narrative.unified_identity_portrait || '',
+    psychodynamic_architecture: narrative.psychodynamic_architecture || '',
+    personality_archetypal_resonance: narrative.personality_archetypal_resonance || '',
+    behavioral_topology: narrative.behavioral_topology || '',
+    predictive_convergence_model: narrative.predictive_convergence_model || '',
+    core_drivers_shadow: narrative.core_drivers_shadow || '',
+    convergence_map: { convergence_points: [], divergence_points: [], overall_alignment_score: 0 },
+    final_unified_assessment: '',
+    synthesis_confidence: 0,
+    synthesis_methodology_note: '',
+  };
+
+  await svc.entities.Subject.update(subject.id, {
+    unified_dossier: partial,
+    // dossier_status stays 'running' — synthesis is not complete until pass 2.
+    dossier_error: '',
+  });
+}
+
+// ── PASS 2 — Convergence map + final assessment ─────────────────────────────
+async function runConvergencePass(svc, subject) {
+  const { systemContext, dspSummary, espSummary } = buildSynthesisContext(subject);
 
   const convergencePrompt = `${systemContext}
 
@@ -244,32 +312,20 @@ Produce:
     synthesis_methodology_note: { type: 'string' },
   };
 
-  const [narrativeResult, convergenceResult] = await Promise.all([
-    llm(narrativePrompt, narrativeSchema),
-    llm(convergencePrompt, convergenceSchema),
-  ]);
+  const convergence = unwrapLLM(await llmOpus(svc, convergencePrompt, convergenceSchema));
 
-  const unwrap = (r) => r?.response ?? r;
-  const narrative = unwrap(narrativeResult);
-  const convergence = unwrap(convergenceResult);
+  // Merge into the narrative-pass object (re-read to avoid clobbering it).
+  const current = (await svc.entities.Subject.filter({ id: subject.id }))?.[0]?.unified_dossier || {};
 
   const unifiedDossier = {
-    date_synthesized: today,
-    dsp_source_date: dsp.date_of_synthesis || '',
-    esoteric_source_date: esp.date_executed || '',
-    unified_identity_portrait: narrative.unified_identity_portrait || '',
-    psychodynamic_architecture: narrative.psychodynamic_architecture || '',
-    personality_archetypal_resonance: narrative.personality_archetypal_resonance || '',
-    behavioral_topology: narrative.behavioral_topology || '',
-    predictive_convergence_model: narrative.predictive_convergence_model || '',
-    core_drivers_shadow: narrative.core_drivers_shadow || '',
+    ...current,
     convergence_map: convergence.convergence_map || { convergence_points: [], divergence_points: [], overall_alignment_score: 0 },
     final_unified_assessment: convergence.final_unified_assessment || '',
     synthesis_confidence: convergence.synthesis_confidence || 0,
     synthesis_methodology_note: convergence.synthesis_methodology_note || '',
   };
 
-  await svc.entities.Subject.update(subject_id, {
+  await svc.entities.Subject.update(subject.id, {
     unified_dossier: unifiedDossier,
     dossier_status: 'complete',
     dossier_error: '',

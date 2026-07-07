@@ -25,10 +25,19 @@
       "default": "queued",
       "description": "Lifecycle state of the job"
     },
+    "stage": {
+      "type": "string",
+      "enum": [
+        "narrative",
+        "convergence"
+      ],
+      "default": "narrative",
+      "description": "Which Opus synthesis pass runs next. The synthesis is split across two worker passes (one Opus call each) so no single invocation exceeds the 120s proxy timeout. 'narrative' produces the six woven sections; 'convergence' produces the convergence map + final assessment. Both passes receive the identical full DSP+ESP context \u2014 the split changes timing, not fidelity."
+    },
     "attempts": {
       "type": "number",
       "default": 0,
-      "description": "How many times a worker has attempted this job"
+      "description": "How many times a worker has attempted the CURRENT stage"
     },
     "max_attempts": {
       "type": "number",
