@@ -111,9 +111,12 @@ async function analyzeWithImentiv(fileUrl, kind) {
   }
 
   // ── Poll ──────────────────────────────────────────────────────────────
+  // 100 attempts × 3s = 300s patience budget. Transient 5xx errors are
+  // absorbed by the outer platform window; the shorter interval means slow
+  // Imentiv runs settle faster once they do complete.
   let attempts = 0;
-  while (attempts++ < 60) {
-    await new Promise((r) => setTimeout(r, 5000));
+  while (attempts++ < 100) {
+    await new Promise((r) => setTimeout(r, 3000));
 
     const pollRes = await fetch(`${IMENTIV_API_URL}/v1/${collection}/${resourceId}`, {
       headers: IMENTIV_HEADERS,
@@ -164,8 +167,8 @@ async function transcribeWithAssembly(fileUrl) {
   let result = null;
   let attempts = 0;
   while (status === 'processing' || status === 'queued') {
-    if (attempts++ > 60) throw new Error('AssemblyAI transcript timed out');
-    await new Promise(r => setTimeout(r, 5000));
+    if (attempts++ > 100) throw new Error('AssemblyAI transcript timed out');
+    await new Promise(r => setTimeout(r, 3000));
     const pollRes = await fetch(`${ASSEMBLY_API_URL}/transcript/${id}`, {
       headers: { 'Authorization': ASSEMBLY_API_KEY },
     });

@@ -91,8 +91,9 @@ export default function Processing() {
           const mediaType = (ext === 'mp4' || ext === 'mov') ? 'Video' : 'Audio';
           enhancedPrompt = (enhancedPrompt || '') + `\n\n${mediaType} analysis for ${fileName}:\nEmotion Data: ${JSON.stringify(emotionData)}\n${transcript ? `Verbatim Transcript: ${transcript}` : 'Transcript: unavailable'}`;
         } catch (error) {
-          info.push(`${ext.toUpperCase()} processing failed for ${fileName}: ${error.message}`);
-          throw new Error(`${ext === 'mp4' || ext === 'mov' ? 'Video' : 'Audio'} processing failed: ${fileName}`);
+          // Per-file resilience: one media file failing must NOT abort the
+          // whole module. Record the failure and continue with the rest.
+          info.push(`${ext.toUpperCase()} SKIPPED — processing failed for ${fileName}: ${error.message}`);
         }
         continue;
       }
