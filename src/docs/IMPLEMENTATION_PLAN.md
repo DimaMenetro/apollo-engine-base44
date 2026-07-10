@@ -1,7 +1,26 @@
 # Apollo Profiling Engine — Master Implementation Plan
 ## Document ID: IP-001-G-D-APL
-## Last Updated: 2026-06-13
+## Last Updated: 2026-07-10
 ## Status: ACTIVE
+
+---
+
+## PHASE 5 — Synthesis Pipeline Reliability & Integrity ✅ (2026-07-10)
+
+Janus-ratified 5-fix package addressing partial dossiers, false "synthesizing" states, Frankenstein data-mixing on re-synthesis, and the drifting nav bar. **Context fidelity preserved absolutely — every stage still receives the full DSP+ESP context (context slicing declared a disallowed move).**
+
+| Fix | Change | Files |
+|-----|--------|-------|
+| 1 — Staging buffer + atomic promotion | Stages write to new `Subject.unified_dossier_draft`; final stage promotes the complete draft to `unified_dossier` in ONE write. Stage 1 resets the draft. Prior complete dossier stays intact until full replacement exists — partial runs can never mix months or leave holes. | `entities/Subject.jsonc`, `functions/processDossierJobs` |
+| 2 — Attempts cap at claim | Zombie-loop fix: a worker killed mid-flight never reaches the catch block, so the `max_attempts` cap is now also enforced at claim time — job fails honestly ("stopped at stage N after M attempts") instead of reclaiming forever. | `functions/processDossierJobs` |
+| 3 — Timeout mitigation | `max_attempts` 3→5 (enqueue + worker fallbacks); final assessment prompt 5-7 → **4-6 dense paragraphs** (generation time scales with output length). Caught errors now prefixed `[stage: X]` for forensics. | `functions/enqueueDossierSynthesis`, `functions/processDossierJobs` |
+| 3b — Evidence-adaptive models | `pickSynthesisModel()`: combined DSP+ESP summary ≥ 12,000 chars → `claude_opus_4_8`; lighter → `claude-sonnet-5` (no "Sonnet 4.8" exists; Sonnet 5 is the current top Sonnet). Replaces hard-coded `claude_opus_4_6`. Cuts credit burn on light subjects. | `functions/processDossierJobs` |
+| 4 — Honest stage-level UI | New `SynthesisStageStatus` component polls the active `DossierJob` and shows "Synthesizing stage N of 9: {section}". Failure messages carry the dying stage. | `components/dossier/SynthesisStageStatus`, `pages/UnifiedDossier` |
+| 5 — Nav bar drift | Removed `whileInView` from the fixed `GlassTabBar` `<motion.nav>` — it re-fired the y:20→0 entrance during scroll on an always-in-view fixed element, yanking the bar mid-screen. | `components/ui/GlassTabBar` |
+
+**Watchdog correction (for the record):** the scheduled safety-net worker ("Dossier Job Worker (safety net)", every 5 min) **does exist and runs** — the hangs came from the zombie loop (Fix 2), not a missing watchdog.
+
+**⚠️ TESTING BLOCKED:** integration credits exhausted until 2026-07-30 (or tier upgrade) — full end-to-end synthesis verification (esp. whether 4-6 paragraphs clears the 120s wall on the densest subjects) must run after credits return. Queue mechanics deploy-validated only.
 
 ---
 

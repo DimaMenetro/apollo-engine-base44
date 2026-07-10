@@ -15,6 +15,7 @@ import ConvergenceRadar from '../components/dossier/ConvergenceRadar';
 import PersonalityArchetypalChart from '../components/dossier/PersonalityArchetypalChart';
 import UnifiedTimeline from '../components/dossier/UnifiedTimeline';
 import { useAccessory } from '../components/ui/AccessoryContext';
+import SynthesisStageStatus from '../components/dossier/SynthesisStageStatus';
 
 export default function UnifiedDossier() {
   const queryClient = useQueryClient();
@@ -60,6 +61,15 @@ export default function UnifiedDossier() {
   const isGenerating = subject?.dossier_status === 'running' || subject?.dossier_status === 'generating';
   const isBusy = isSynthesizing || isQueued || isGenerating;
   const backgroundError = subject?.dossier_status === 'failed' ? subject?.dossier_error : null;
+
+  // Poll the active synthesis job for honest stage-level progress.
+  const { data: jobData } = useQuery({
+    queryKey: ['dossierJob', subjectId],
+    queryFn: () => base44.entities.DossierJob.filter({ subject_id: subjectId, job_type: 'synthesize_dossier' }, '-updated_date', 3),
+    enabled: !!subjectId && (isQueued || isGenerating),
+    refetchInterval: 4000,
+  });
+  const activeJob = (jobData || []).find(j => j.status === 'queued' || j.status === 'running');
 
   const handleSynthesize = async () => {
     setIsSynthesizing(true);
@@ -165,16 +175,7 @@ export default function UnifiedDossier() {
       )}
 
       {(isQueued || isGenerating) && (
-        <div style={{
-          marginBottom: 16, padding: '10px 14px', borderRadius: 10,
-          background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)',
-          fontSize: 13, color: '#10b981', display: 'flex', alignItems: 'center', gap: 8,
-        }}>
-          <Loader2 style={{ width: 15, height: 15, animation: 'spin 1s linear infinite' }} />
-          {isQueued
-            ? 'Synthesis is queued. A worker will pick it up momentarily — the dossier will appear here automatically. You can safely leave this page.'
-            : 'Full-fidelity synthesis is running on the server. This can take a few minutes — the dossier will appear here automatically when complete. You can safely leave this page.'}
-        </div>
+        <SynthesisStageStatus job={activeJob} isQueued={isQueued} />
       )}
 
       {(synthError || backgroundError) && (

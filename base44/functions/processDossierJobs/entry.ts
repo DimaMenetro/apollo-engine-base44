@@ -30,8 +30,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
  *
  *   FIDELITY IS PRESERVED ABSOLUTELY: every stage receives the identical full
  *   context (systemContext + dspSummary + espSummary). No summarization, no
- *   trimming, no model change, no schema simplification. Model stays
- *   claude_opus_4_6. The split changes only per-call wall time.
+ *   trimming, no schema simplification. Model is EVIDENCE-ADAPTIVE: Opus 4.8
+ *   for dense subjects, Sonnet for light ones (see pickSynthesisModel).
  *
  * EXECUTION MODEL:
  *   Runs as service-role. Ownership was enforced at enqueue time; this worker
@@ -132,6 +132,25 @@ Deno.serve(async (req) => {
 
       if (!isClaimable) continue; // another worker already took it
 
+      // ── ATTEMPTS CAP AT CLAIM (zombie-loop fix) ─────────────────────────
+      // A worker killed mid-flight never reaches the catch block, so the cap
+      // must also be enforced HERE — otherwise a deterministically-failing
+      // stage gets reclaimed forever and the Subject shows 'running' eternally.
+      if ((fresh.attempts || 0) >= (fresh.max_attempts || 5)) {
+        const capMsg = `Synthesis stopped at stage '${fresh.stage}' after ${fresh.attempts} attempts — the worker died or timed out repeatedly at this stage.`;
+        await svc.entities.DossierJob.update(fresh.id, {
+          status: 'failed',
+          completed_at: new Date().toISOString(),
+          error: capMsg,
+        });
+        await svc.entities.Subject.update(fresh.subject_id, {
+          dossier_status: 'failed',
+          dossier_error: capMsg,
+        });
+        processed.push({ job_id: fresh.id, result: 'failed_attempts_cap', stage: fresh.stage });
+        continue;
+      }
+
       const stage = STAGE_ORDER.includes(fresh.stage) ? fresh.stage : 'identity';
 
       const claimed = await svc.entities.DossierJob.update(fresh.id, {
@@ -184,8 +203,8 @@ Deno.serve(async (req) => {
 
       } catch (err) {
         const attempts = claimed.attempts || 1;
-        const maxAttempts = claimed.max_attempts || 3;
-        const message = err.message || 'Synthesis failed';
+        const maxAttempts = claimed.max_attempts || 5;
+        const message = `[stage: ${stage}] ${err.message || 'Synthesis failed'}`;
 
         if (attempts >= maxAttempts) {
           await svc.entities.DossierJob.update(claimed.id, {
@@ -279,20 +298,33 @@ ESOTERIC DATA:
 ${espSummary}`;
 }
 
-const llmOpus = (svc, prompt, schema) => svc.integrations.Core.InvokeLLM({
-  model: 'claude_opus_4_6',
+// ── EVIDENCE-ADAPTIVE MODEL SELECTION ───────────────────────────────────────
+// Subjects with dense DSP+ESP evidence get Opus 4.8 (maximum synthesis depth);
+// lighter subjects get Sonnet (claude-sonnet-5) to conserve integration credits
+// without degrading fidelity — the full context is ALWAYS sent either way.
+const DENSE_EVIDENCE_CHARS = 12000;
+
+function pickSynthesisModel(subject) {
+  const size = (buildDSPSummary(subject.dsp || {}) + buildEsotericSummary(subject.esoteric_profile || {})).length;
+  return size >= DENSE_EVIDENCE_CHARS ? 'claude_opus_4_8' : 'claude-sonnet-5';
+}
+
+const llmSynth = (svc, subject, prompt, schema) => svc.integrations.Core.InvokeLLM({
+  model: pickSynthesisModel(subject),
   prompt,
   response_json_schema: { type: 'object', properties: schema }
 });
 
 const unwrapLLM = (r) => r?.response ?? r;
 
-// Re-read the current dossier and merge in this stage's fields without
-// clobbering fields written by prior stages.
-async function mergeDossier(svc, subjectId, fields) {
-  const current = (await svc.entities.Subject.filter({ id: subjectId }))?.[0]?.unified_dossier || {};
+// STAGING BUFFER: stages write to unified_dossier_draft, NEVER the live
+// unified_dossier. The live dossier is replaced only by the final stage's
+// atomic promotion — a failed or partial run can never corrupt or mix into a
+// previously complete dossier. reset=true (first stage) starts a clean draft.
+async function mergeDossier(svc, subjectId, fields, reset = false) {
+  const current = reset ? {} : ((await svc.entities.Subject.filter({ id: subjectId }))?.[0]?.unified_dossier_draft || {});
   await svc.entities.Subject.update(subjectId, {
-    unified_dossier: { ...current, ...fields },
+    unified_dossier_draft: { ...current, ...fields },
     dossier_error: '',
   });
 }
@@ -317,14 +349,14 @@ async function runIdentity(svc, subject) {
   const prompt = narrativePrompt(subject,
     `UNIFIED IDENTITY PORTRAIT (4-5 paragraphs): Merge the DSP executive summary with the esoteric inquiry frame and unified emotional synthesis. Who IS this person when seen through both lenses simultaneously?`);
 
-  const out = unwrapLLM(await llmOpus(svc, prompt, { unified_identity_portrait: { type: 'string' } }));
+  const out = unwrapLLM(await llmSynth(svc, subject, prompt, { unified_identity_portrait: { type: 'string' } }));
 
   await mergeDossier(svc, subject.id, {
     date_synthesized: today,
     dsp_source_date: dsp.date_of_synthesis || '',
     esoteric_source_date: esp.date_executed || '',
     unified_identity_portrait: out.unified_identity_portrait || '',
-  });
+  }, true); // reset=true — first stage always starts a clean draft
 }
 
 // ── STAGE 2 — psychodynamic: psychodynamic architecture ─────────────────────
@@ -332,7 +364,7 @@ async function runPsychodynamic(svc, subject) {
   const prompt = narrativePrompt(subject,
     `PSYCHODYNAMIC ARCHITECTURE (3-4 paragraphs): Merge DSP cognitive architecture (thinking style, epistemic requirements, defense mechanisms) with the astrological interpretation. How do the subject's cognitive patterns align with or diverge from their planetary activations?`);
 
-  const out = unwrapLLM(await llmOpus(svc, prompt, { psychodynamic_architecture: { type: 'string' } }));
+  const out = unwrapLLM(await llmSynth(svc, subject, prompt, { psychodynamic_architecture: { type: 'string' } }));
 
   await mergeDossier(svc, subject.id, {
     psychodynamic_architecture: out.psychodynamic_architecture || '',
@@ -344,7 +376,7 @@ async function runPersonality(svc, subject) {
   const prompt = narrativePrompt(subject,
     `PERSONALITY & ARCHETYPAL RESONANCE (3-4 paragraphs): Merge the Big Five personality matrix with the numerological interpretation. Reference specific scores alongside cycle positions. Where does the empirical personality confirm or challenge the archetypal structure?`);
 
-  const out = unwrapLLM(await llmOpus(svc, prompt, { personality_archetypal_resonance: { type: 'string' } }));
+  const out = unwrapLLM(await llmSynth(svc, subject, prompt, { personality_archetypal_resonance: { type: 'string' } }));
 
   await mergeDossier(svc, subject.id, {
     personality_archetypal_resonance: out.personality_archetypal_resonance || '',
@@ -356,7 +388,7 @@ async function runBehavioral(svc, subject) {
   const prompt = narrativePrompt(subject,
     `BEHAVIORAL TOPOLOGY (3-4 paragraphs): Merge behavioral patterns with the threshold assessment. Is the subject's observed behavioral loop congruent with their esoteric phase? What does the combination reveal?`);
 
-  const out = unwrapLLM(await llmOpus(svc, prompt, { behavioral_topology: { type: 'string' } }));
+  const out = unwrapLLM(await llmSynth(svc, subject, prompt, { behavioral_topology: { type: 'string' } }));
 
   await mergeDossier(svc, subject.id, {
     behavioral_topology: out.behavioral_topology || '',
@@ -368,7 +400,7 @@ async function runPredictive(svc, subject) {
   const prompt = narrativePrompt(subject,
     `PREDICTIVE CONVERGENCE MODEL (3-4 paragraphs): Merge the action/response matrix (triggers, predicted behaviors, probabilities) with the strategic translation. Where do empirical predictions and esoteric guidance point in the same direction? Where do they diverge?`);
 
-  const out = unwrapLLM(await llmOpus(svc, prompt, { predictive_convergence_model: { type: 'string' } }));
+  const out = unwrapLLM(await llmSynth(svc, subject, prompt, { predictive_convergence_model: { type: 'string' } }));
 
   await mergeDossier(svc, subject.id, {
     predictive_convergence_model: out.predictive_convergence_model || '',
@@ -380,7 +412,7 @@ async function runDrivers(svc, subject) {
   const prompt = narrativePrompt(subject,
     `CORE DRIVERS & SHADOW MATERIAL (2-3 paragraphs): Merge motivations/fears with the limitation statement. What drives this person at the deepest level when both lenses are applied?`);
 
-  const out = unwrapLLM(await llmOpus(svc, prompt, { core_drivers_shadow: { type: 'string' } }));
+  const out = unwrapLLM(await llmSynth(svc, subject, prompt, { core_drivers_shadow: { type: 'string' } }));
 
   await mergeDossier(svc, subject.id, {
     core_drivers_shadow: out.core_drivers_shadow || '',
@@ -410,7 +442,7 @@ Produce the CONVERGENCE MAP — analyze where the two lenses agree and disagree:
     },
   };
 
-  const out = unwrapLLM(await llmOpus(svc, prompt, schema));
+  const out = unwrapLLM(await llmSynth(svc, subject, prompt, schema));
 
   await mergeDossier(svc, subject.id, {
     convergence_map: out.convergence_map || { convergence_points: [], divergence_points: [], overall_alignment_score: 0 },
@@ -424,13 +456,13 @@ async function runFinalAssessment(svc, subject) {
 
   const prompt = `${systemContext}${dataBlock(dspSummary, espSummary)}
 
-Produce the FINAL UNIFIED ASSESSMENT (5-7 paragraphs): The single-voice definitive portrait of this subject. This is the culmination. It should read as if one brilliant analyst wrote it from complete knowledge. Reference specific data points from both domains naturally. This is the document that makes separate DSP and ESP reports unnecessary.`;
+Produce the FINAL UNIFIED ASSESSMENT (4-6 dense paragraphs): The single-voice definitive portrait of this subject. This is the culmination. It should read as if one brilliant analyst wrote it from complete knowledge. Reference specific data points from both domains naturally. This is the document that makes separate DSP and ESP reports unnecessary.`;
 
   const schema = {
     final_unified_assessment: { type: 'string' },
   };
 
-  const out = unwrapLLM(await llmOpus(svc, prompt, schema));
+  const out = unwrapLLM(await llmSynth(svc, subject, prompt, schema));
 
   await mergeDossier(svc, subject.id, {
     final_unified_assessment: out.final_unified_assessment || '',
@@ -455,16 +487,19 @@ Having synthesized this subject through both empirical and esoteric lenses, prod
     synthesis_methodology_note: { type: 'string' },
   };
 
-  const out = unwrapLLM(await llmOpus(svc, prompt, schema));
+  const out = unwrapLLM(await llmSynth(svc, subject, prompt, schema));
 
-  // Final stage: merge these fields AND flip the Subject to complete atomically.
-  const current = (await svc.entities.Subject.filter({ id: subject.id }))?.[0]?.unified_dossier || {};
+  // ATOMIC PROMOTION: merge the final fields into the draft, then promote the
+  // COMPLETE draft to the live unified_dossier in one write. The prior dossier
+  // stays intact and visible until this exact moment.
+  const draft = (await svc.entities.Subject.filter({ id: subject.id }))?.[0]?.unified_dossier_draft || {};
   await svc.entities.Subject.update(subject.id, {
     unified_dossier: {
-      ...current,
+      ...draft,
       synthesis_confidence: out.synthesis_confidence || 0,
       synthesis_methodology_note: out.synthesis_methodology_note || '',
     },
+    unified_dossier_draft: {},
     dossier_status: 'complete',
     dossier_error: '',
   });

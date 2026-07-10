@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
         status: 'queued',
         stage: 'identity', // first of nine sequential single-section Opus passes
         attempts: 0,
-        max_attempts: 3,
+        max_attempts: 5,
         idempotency_key: `${subject_id}:synthesize_dossier`,
         // Ownership anchor — worker trusts this instead of re-checking RLS.
         created_by_id: subject.created_by_id,

@@ -535,6 +535,11 @@
         }
       }
     },
+    "unified_dossier_draft": {
+      "type": "object",
+      "description": "STAGING BUFFER for in-progress synthesis. Worker stages write their sections here \u2014 never to the live unified_dossier. Only the final stage atomically promotes the complete draft to unified_dossier, so a failed or partial run can never corrupt, blank out, or mix into a previously complete dossier. Same shape as unified_dossier.",
+      "additionalProperties": true
+    },
     "operator_notes": {
       "type": "string",
       "description": "Operator refinement notes"

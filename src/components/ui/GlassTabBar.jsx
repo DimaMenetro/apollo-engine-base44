@@ -86,8 +86,6 @@ export default function GlassTabBar({ currentPageName }) {
           ref={navRef}
           animate={searchOpen ? { width: 50, flexShrink: 0 } : { width: 'auto', flexShrink: 0 }}
           transition={{ type: 'spring', stiffness: 420, damping: 36 }}
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
           style={{
             ...glassTabBar(t),
             position:   'relative',
