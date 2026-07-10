@@ -15,7 +15,20 @@ import ConvergenceRadar from '../components/dossier/ConvergenceRadar';
 import PersonalityArchetypalChart from '../components/dossier/PersonalityArchetypalChart';
 import UnifiedTimeline from '../components/dossier/UnifiedTimeline';
 import { useAccessory } from '../components/ui/AccessoryContext';
-import SynthesisStageStatus from '../components/dossier/SynthesisStageStatus';
+
+// Ordered worker stages — used to translate the active job into progress.
+const SYNTH_STAGES = ['identity', 'psychodynamic', 'personality', 'behavioral', 'predictive', 'drivers', 'convergence_map', 'final_assessment', 'confidence_methodology'];
+const SYNTH_LABELS = {
+  identity: 'Unified Identity Portrait',
+  psychodynamic: 'Psychodynamic Architecture',
+  personality: 'Personality & Archetypal Resonance',
+  behavioral: 'Behavioral Topology',
+  predictive: 'Predictive Convergence Model',
+  drivers: 'Core Drivers & Shadow',
+  convergence_map: 'Convergence Map',
+  final_assessment: 'Final Unified Assessment',
+  confidence_methodology: 'Confidence & Methodology',
+};
 
 export default function UnifiedDossier() {
   const queryClient = useQueryClient();
@@ -70,6 +83,19 @@ export default function UnifiedDossier() {
     refetchInterval: 4000,
   });
   const activeJob = (jobData || []).find(j => j.status === 'queued' || j.status === 'running');
+
+  const stageIdx = activeJob ? SYNTH_STAGES.indexOf(activeJob.stage) : -1;
+  const stageText = stageIdx >= 0
+    ? `Synthesizing ${stageIdx + 1}/${SYNTH_STAGES.length}: ${SYNTH_LABELS[activeJob.stage] || activeJob.stage}`
+    : null;
+
+  // Publish stage-level progress to the existing BottomAccessory glass slab.
+  useEffect(() => {
+    if (stageText && (isQueued || isGenerating)) {
+      updateProgress(stageText, Math.round(((stageIdx + 1) / SYNTH_STAGES.length) * 100));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stageText]);
 
   const handleSynthesize = async () => {
     setIsSynthesizing(true);
@@ -175,7 +201,18 @@ export default function UnifiedDossier() {
       )}
 
       {(isQueued || isGenerating) && (
-        <SynthesisStageStatus job={activeJob} isQueued={isQueued} />
+        <div style={{
+          marginBottom: 16, padding: '10px 14px', borderRadius: 10,
+          background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)',
+          fontSize: 13, color: '#10b981', display: 'flex', alignItems: 'center', gap: 8,
+        }}>
+          <Loader2 style={{ width: 15, height: 15, animation: 'spin 1s linear infinite', flexShrink: 0 }} />
+          {stageText
+            ? `${stageText} — the dossier will appear automatically when all stages complete. You can safely leave this page.`
+            : isQueued
+              ? 'Synthesis is queued. A worker will pick it up momentarily — the dossier will appear here automatically. You can safely leave this page.'
+              : 'Full-fidelity synthesis is running on the server. This can take a few minutes — the dossier will appear here automatically when complete. You can safely leave this page.'}
+        </div>
       )}
 
       {(synthError || backgroundError) && (
