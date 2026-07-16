@@ -18,6 +18,12 @@ export default function BottomAccessory({ t }) {
 
   const isVisible = status !== 'idle';
 
+  // Detect granular synthesis-stage titles ("Synthesizing 5/9: Behavioral Topology")
+  // published by UnifiedDossier, and split into a step counter + module name.
+  const stageMatch = /^Synthesizing\s+(\d+)\/(\d+):\s*(.+)$/.exec(moduleTitle || '');
+  const stageStep = stageMatch ? `${stageMatch[1]}/${stageMatch[2]}` : null;
+  const stageName = stageMatch ? stageMatch[3] : null;
+
   return (
     <AnimatePresence>
       {isVisible && (
@@ -58,6 +64,23 @@ export default function BottomAccessory({ t }) {
           <div style={{ flex: 1, minWidth: 0 }}>
             {status === 'running' && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {stageStep && (
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: t.accent,
+                      background: 'rgba(255,255,255,0.06)',
+                      border: `1px solid ${t.accent}33`,
+                      borderRadius: 6,
+                      padding: '1px 6px',
+                      flexShrink: 0,
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
+                    {stageStep}
+                  </span>
+                )}
                 <span
                   style={{
                     fontSize: 12,
@@ -68,7 +91,7 @@ export default function BottomAccessory({ t }) {
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {moduleTitle || 'Initializing…'}
+                  {stageName || moduleTitle || 'Initializing…'}
                 </span>
                 {progress > 0 && (
                   <span style={{ fontSize: 11, color: t.accent, flexShrink: 0 }}>
@@ -77,9 +100,9 @@ export default function BottomAccessory({ t }) {
                 )}
               </div>
             )}
-            {status === 'running' && subjectName && (
-              <div style={{ fontSize: 10, color: t.muted, marginTop: 1 }}>
-                {subjectName}
+            {status === 'running' && (stageStep ? 'Synthesizing' : subjectName) && (
+              <div style={{ fontSize: 10, color: t.muted, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {stageStep ? (subjectName ? `Synthesizing · ${subjectName}` : 'Synthesizing') : subjectName}
               </div>
             )}
             {status === 'completed' && (
@@ -94,11 +117,11 @@ export default function BottomAccessory({ t }) {
             )}
           </div>
 
-          {/* Progress bar (running only) */}
+          {/* Progress bar (running only) — wider during multi-stage synthesis */}
           {status === 'running' && progress > 0 && (
             <div
               style={{
-                width: 48,
+                width: stageStep ? 80 : 48,
                 height: 4,
                 borderRadius: 999,
                 background: 'rgba(255,255,255,0.08)',
