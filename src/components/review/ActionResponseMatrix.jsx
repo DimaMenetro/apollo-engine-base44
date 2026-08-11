@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Plus, Trash2, TrendingUp, AlertCircle, Clock } from 'lucide-react';
 import { useTheme } from '../theme/ThemeProvider';
 import { light, dark, glassBtnSecondary } from '../ui/LiquidGlass';
+import TrajectorySimulation from './TrajectorySimulation';
 
 export default function ActionResponseMatrix({ data = [], onChange, editable = false }) {
   const { isDark } = useTheme();
@@ -109,6 +110,7 @@ export default function ActionResponseMatrix({ data = [], onChange, editable = f
                     <p style={{ color: t.muted, margin: 0, fontSize: 13 }}>{temporal}</p>
                   </div>
                 )}
+                <TrajectorySimulation item={item} />
               </div>
             </div>
           );
@@ -175,6 +177,9 @@ export default function ActionResponseMatrix({ data = [], onChange, editable = f
                     ) : null}
                   </div>
                 )}
+
+                {/* Simulation fields (mechanism, trajectory, branches) — regeneration-managed, shown read-only */}
+                <TrajectorySimulation item={item} />
               </div>
 
               {/* Right: probability + CI */}

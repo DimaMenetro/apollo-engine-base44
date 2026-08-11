@@ -41,6 +41,22 @@ Presentation-layer only. No backend / prompt / schema / export changes. Restruct
 
 ---
 
+## PHASE 6 — Predictive Model → Subject Simulation ("Tiny Chronologos") ✅ 2026-08-11
+
+**Problem (operator-identified, Daionae-arbitrated):** The DSP predictive section restated observed behavior as "predictions" — Behavioral Patterns wearing a fake mustache. Historical patterns are not the enemy: they are the mechanism source. The failure was calling the pattern itself a prediction instead of running the architecture forward.
+
+**Design principle:** Subject architecture + present state + anticipated situation → probable behavioral trajectory. The predicted SEQUENCE is the product; probability is supporting information. Subjects are "currently predictable within modeled regions of their behavioral state-space" — divergence from prediction is new information about the subject architecture, not merely a failed forecast.
+
+**What was built:**
+- DSP generation prompt (`pages/SubjectReview`) now mandates simulation: each prediction targets a FUTURE scenario, cites its `observed_basis` (known pattern used as mechanism), derives an `architecture_mechanism` (traits/loops → forecast), and produces a multi-step `trajectory` (3-6 ordered steps), `branches` (condition → alternative path), `accelerants`, `interrupters`, `least_certain`, and `inference_class` (pattern_recurrence vs forward_inference).
+- Fully-typed response schema for all new fields (per 2026-08-11 hollow-sections incident lesson).
+- `components/review/TrajectorySimulation` — renders inference-class badge, mechanism derivation, numbered trajectory sequence, branch cards, accelerant/interrupter grid, and uncertainty note. Wired into `ActionResponseMatrix` cards in both read-only and edit modes (simulation fields are regeneration-managed, displayed read-only).
+- Backward compatible: legacy predictions without simulation fields render exactly as before.
+
+**Deliberately deferred (instrumentation, not feature):** forecast ledgers, Brier scores, calibration plots, pastcasting, immutable prediction histories. These measure whether the tiny Chronologos is good; they are not what makes it useful.
+
+---
+
 ## INCIDENT LOG
 
 | Date | Incident | Root Cause | Resolution |

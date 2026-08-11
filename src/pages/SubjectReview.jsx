@@ -75,7 +75,19 @@ REQUIRED OUTPUT FIELDS:
 - personality_matrix: object with openness, conscientiousness, extraversion, agreeableness, neuroticism — each having score (int 0-100), label, evidence (2-3 sentences), indicators (array of 4-6 strings)
 - cognitive_architecture: object with thinking_style, epistemic_requirements, defense_mechanisms (each 2-3 sentences), sub_sections (array of 4-6 objects with title and content)
 - behavioral_patterns: array of 4-6 objects with label, description, context
-- predictions: array of 4-6 objects with trigger, context, predicted_behavior, probability (int 0-100), confidence_interval ({lower, upper}), temporal_factors
+- predictions: array of 4-6 SUBJECT SIMULATIONS. CRITICAL: a prediction is NOT a restatement of observed behavior — a known pattern alone is just history wearing a fake mustache. Use observed patterns as MECHANISMS, then RUN THE SUBJECT'S COGNITIVE ARCHITECTURE FORWARD against a future scenario to derive what happens NEXT. Each object:
+  - trigger: an anticipated FUTURE scenario or upcoming situation (novel/unobserved situations encouraged)
+  - context: situational factors shaping this scenario
+  - observed_basis: the known historical pattern(s) this simulation draws on (1-2 sentences; "" if extrapolating beyond observed data)
+  - architecture_mechanism: WHICH traits and loops generate this forecast and WHY — cite trait scores and behavioral mechanisms (2-3 sentences)
+  - trajectory: ordered array of 3-6 strings — the probable behavioral SEQUENCE over time (e.g., initial somatic/emotional reaction → internal evaluation → outward behavior → recalibration → resolution). The sequence is the product, not the probability.
+  - branches: array of 1-3 objects with condition (what pushes the subject off the primary path) and path (the alternative sequence)
+  - accelerants: what would speed up or intensify the primary trajectory (1-2 sentences)
+  - interrupters: what would break or de-escalate it (1-2 sentences)
+  - least_certain: where this simulation is weakest / least supported (1-2 sentences)
+  - inference_class: "pattern_recurrence" (stable observed mechanism expected to recur) or "forward_inference" (architecture extrapolated into unobserved territory)
+  - predicted_behavior: one-sentence headline of the trajectory's most likely outcome
+  - probability (int 0-100), confidence_interval ({lower, upper}), temporal_factors
 - motivations: array of 5-7 strings
 - fears: array of 4-6 strings
 - final_assessment: 4-6 paragraph definitive portrait
@@ -150,6 +162,21 @@ Be thorough, specific, and analytical. Ground every claim in evidence. All score
               properties: {
                 trigger: { type: "string" },
                 context: { type: "string" },
+                observed_basis: { type: "string" },
+                architecture_mechanism: { type: "string" },
+                trajectory: { type: "array", items: { type: "string" } },
+                branches: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: { condition: { type: "string" }, path: { type: "string" } },
+                    required: ["condition", "path"],
+                  },
+                },
+                accelerants: { type: "string" },
+                interrupters: { type: "string" },
+                least_certain: { type: "string" },
+                inference_class: { type: "string", enum: ["pattern_recurrence", "forward_inference"] },
                 predicted_behavior: { type: "string" },
                 probability: { type: "integer" },
                 confidence_interval: {
@@ -159,7 +186,7 @@ Be thorough, specific, and analytical. Ground every claim in evidence. All score
                 },
                 temporal_factors: { type: "string" },
               },
-              required: ["trigger", "context", "predicted_behavior", "probability", "confidence_interval", "temporal_factors"],
+              required: ["trigger", "context", "observed_basis", "architecture_mechanism", "trajectory", "branches", "accelerants", "interrupters", "least_certain", "inference_class", "predicted_behavior", "probability", "confidence_interval", "temporal_factors"],
             },
           },
           motivations: { type: "array", items: { type: "string" } },
