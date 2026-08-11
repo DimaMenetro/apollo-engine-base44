@@ -53,6 +53,20 @@ Presentation-layer only. No backend / prompt / schema / export changes. Restruct
 - `components/review/TrajectorySimulation` — renders inference-class badge, mechanism derivation, numbered trajectory sequence, branch cards, accelerant/interrupter grid, and uncertainty note. Wired into `ActionResponseMatrix` cards in both read-only and edit modes (simulation fields are regeneration-managed, displayed read-only).
 - Backward compatible: legacy predictions without simulation fields render exactly as before.
 
+### Phase 6b — Downstream Propagation ✅ 2026-08-11 (Daionae audit remediation)
+
+Daionae's live-app audit approved the Phase 6 concept, core generation, UI component, and scope discipline, but found **downstream information loss**: Apollo derived observed basis → mechanism → trajectory → branches → modifiers, then handed the dossier engine `trigger → outcome → 82%`. Remediated:
+
+- **`processDossierJobs` / `buildDSPSummary`** — the DSP context block now emits full simulation fidelity per prediction (inference class, observed basis, architecture mechanism, numbered trajectory, branches, accelerants, interrupters, least-certain), labelled "SUBJECT SIMULATIONS (architecture run forward)".
+- **`processDossierJobs` / `runPredictive` prompt** — now explicitly forbids collapsing a simulation into "trigger → outcome → probability", requires carrying through trajectories, mechanisms, branch conditions, and modifiers, and preserves the pattern_recurrence / forward_inference distinction before merging with esoteric strategic translation.
+- **`UnifiedTimeline`** — predicted nodes now render the actual ordered trajectory steps plus an inference-class badge, instead of only the headline behavior.
+- **`exportDSP` PDF** — the predictive section is now "SUBJECT SIMULATION" and exports inference class, observed basis, architecture mechanism, numbered trajectory, branches, accelerants, interrupters, and least-certain; the headline field is relabelled accordingly.
+
+**Open items carried forward (per Daionae, not blocking):**
+1. **Behavioral test outstanding** — regenerate Caden and inspect whether trajectories genuinely derive from the *synthesized architecture* rather than directly extrapolating raw `analysis_results`. Generation is currently one joint call (analysis → architecture + simulations), not two stages. If subtle recapitulation persists, the minimal next correction is **two-stage DSP generation**: synthesize the subject model first, then hand that completed model to a separate prediction pass. Do not build a subsystem for this preemptively.
+2. **Epistemic naming** — `confidence_interval` / "CI:" are LLM-generated ranges, not statistically derived intervals. Rename to `uncertainty_range` eventually (cheap, cleaner epistemics).
+3. **Continuity** — the live Base44 app is AHEAD of the GitHub repository. GitHub still reflects the earlier hollow-schema repair; Phase 6 and 6b exist only in Base44. Do not treat GitHub as synchronized.
+
 **Deliberately deferred (instrumentation, not feature):** forecast ledgers, Brier scores, calibration plots, pastcasting, immutable prediction histories. These measure whether the tiny Chronologos is good; they are not what makes it useful.
 
 ---

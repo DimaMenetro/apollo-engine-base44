@@ -398,7 +398,7 @@ async function runBehavioral(svc, subject) {
 // ── STAGE 5 — predictive: predictive convergence model ──────────────────────
 async function runPredictive(svc, subject) {
   const prompt = narrativePrompt(subject,
-    `PREDICTIVE CONVERGENCE MODEL (3-4 paragraphs): Merge the action/response matrix (triggers, predicted behaviors, probabilities) with the strategic translation. Where do empirical predictions and esoteric guidance point in the same direction? Where do they diverge?`);
+    `PREDICTIVE CONVERGENCE MODEL (3-4 paragraphs): Merge the SUBJECT SIMULATIONS with the esoteric strategic translation. CRITICAL: these simulations are the subject's cognitive architecture run forward, not restated history. Preserve that fidelity — carry through the multi-step behavioral TRAJECTORIES (the sequences, not just their headline outcomes), the architecture mechanisms that generate them, the branch conditions that would divert the subject onto an alternative path, and the accelerants/interrupters that would speed up or break each sequence. Do NOT collapse a simulation into "trigger → outcome → probability"; the sequence is the product and probability is only supporting information. Preserve the distinction between pattern_recurrence and forward_inference, and note where the model is least certain. Then: where do the architecture-derived trajectories and the esoteric guidance point in the same direction, and where do they diverge?`);
 
   const out = unwrapLLM(await llmSynth(svc, subject, prompt, { predictive_convergence_model: { type: 'string' } }));
 
@@ -547,12 +547,34 @@ function buildDSPSummary(dsp) {
   }
 
   if (dsp.action_response_matrix?.length) {
-    const armLines = dsp.action_response_matrix.map(p => {
+    // Full subject-simulation fidelity: the trajectory SEQUENCE is the product,
+    // not the probability. Reducing these to "trigger → outcome → 82%" would
+    // discard the architecture-derived forward model the DSP just built.
+    const armLines = dsp.action_response_matrix.map((p, i) => {
+      const lines = [];
       const prob = p.probability ? `${p.probability}%` : '?';
-      const ci = p.confidence_interval ? ` [CI: ${p.confidence_interval.lower}-${p.confidence_interval.upper}]` : '';
-      return `  Trigger: ${p.trigger || '?'} → ${p.predicted_behavior || '?'} (P=${prob}${ci})`;
+      const ci = p.confidence_interval ? ` [range: ${p.confidence_interval.lower}-${p.confidence_interval.upper}]` : '';
+      lines.push(`  SIMULATION ${i + 1} — SCENARIO: ${p.trigger || p.scenario || '?'}`);
+      if (p.inference_class) lines.push(`    Inference class: ${p.inference_class}`);
+      if (p.context) lines.push(`    Context: ${p.context}`);
+      if (p.observed_basis) lines.push(`    Observed basis (mechanism source): ${p.observed_basis}`);
+      if (p.architecture_mechanism) lines.push(`    Architecture mechanism: ${p.architecture_mechanism}`);
+      if (p.trajectory?.length) {
+        lines.push(`    Predicted trajectory:`);
+        p.trajectory.forEach((step, si) => lines.push(`      ${si + 1}. ${step}`));
+      }
+      if (p.branches?.length) {
+        lines.push(`    Alternative branches:`);
+        p.branches.forEach(b => lines.push(`      IF ${b.condition} → ${b.path}`));
+      }
+      if (p.accelerants) lines.push(`    Accelerants: ${p.accelerants}`);
+      if (p.interrupters) lines.push(`    Interrupters: ${p.interrupters}`);
+      if (p.least_certain) lines.push(`    Least certain: ${p.least_certain}`);
+      lines.push(`    Headline outcome: ${p.predicted_behavior || p.response || '?'} (P=${prob}${ci})`);
+      if (p.temporal_factors) lines.push(`    Temporal factors: ${p.temporal_factors}`);
+      return lines.join('\n');
     });
-    parts.push(`\nPREDICTIVE MODEL:\n${armLines.join('\n')}`);
+    parts.push(`\nSUBJECT SIMULATIONS (architecture run forward — the sequence is the product, probability is supporting information):\n${armLines.join('\n')}`);
   }
 
   if (dsp.motivations?.length) parts.push(`\nMOTIVATIONS: ${dsp.motivations.join('; ')}`);

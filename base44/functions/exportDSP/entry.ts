@@ -503,7 +503,7 @@ Deno.serve(async (req) => {
 
         // Predictive Model
         if (dsp.action_response_matrix?.length > 0) {
-          sectionHeader(doc, theme, margin, '▸', 'PREDICTIVE MODEL', theme.green);
+          sectionHeader(doc, theme, margin, '▸', 'SUBJECT SIMULATION — PREDICTIVE MODEL', theme.green);
           for (const pred of dsp.action_response_matrix) {
             const trigger = pred.trigger || pred.scenario || '';
             const behavior = pred.predicted_behavior || pred.response || '';
@@ -511,15 +511,84 @@ Deno.serve(async (req) => {
             const probColor = prob >= 80 ? theme.green : prob >= 60 ? theme.accent : theme.rose;
 
             ensureSpace(doc, 24, theme, margin);
+
+            if (pred.inference_class) {
+              doc.setFontSize(7);
+              doc.setTextColor(...rgb(pred.inference_class === 'forward_inference' ? theme.violet : theme.cyan));
+              doc.text(pred.inference_class === 'forward_inference' ? 'FORWARD INFERENCE' : 'PATTERN RECURRENCE', margin.left, margin.y);
+              margin.y += 4;
+            }
+
             doc.setFontSize(7);
             doc.setTextColor(...rgb(theme.accent));
-            doc.text('TRIGGER', margin.left, margin.y);
+            doc.text('SCENARIO', margin.left, margin.y);
             margin.y += 3.5;
             wrappedText(doc, theme, margin, trigger, { fontSize: 8 });
 
+            if (pred.observed_basis) {
+              doc.setFontSize(7);
+              doc.setTextColor(...rgb(theme.cyan));
+              doc.text('OBSERVED BASIS', margin.left, margin.y);
+              margin.y += 3.5;
+              wrappedText(doc, theme, margin, pred.observed_basis, { fontSize: 7, color: theme.muted });
+            }
+
+            if (pred.architecture_mechanism) {
+              doc.setFontSize(7);
+              doc.setTextColor(...rgb(theme.violet));
+              doc.text('ARCHITECTURE MECHANISM', margin.left, margin.y);
+              margin.y += 3.5;
+              wrappedText(doc, theme, margin, pred.architecture_mechanism, { fontSize: 8 });
+            }
+
+            if (pred.trajectory?.length > 0) {
+              doc.setFontSize(7);
+              doc.setTextColor(...rgb(theme.green));
+              doc.text('PREDICTED TRAJECTORY', margin.left, margin.y);
+              margin.y += 4;
+              pred.trajectory.forEach((step, si) => {
+                wrappedText(doc, theme, margin, `${si + 1}. ${step}`, { fontSize: 8, x: margin.left + 3, maxW: contentW - 6 });
+              });
+            }
+
+            if (pred.branches?.length > 0) {
+              doc.setFontSize(7);
+              doc.setTextColor(...rgb(theme.accent));
+              doc.text('ALTERNATIVE BRANCHES', margin.left, margin.y);
+              margin.y += 4;
+              for (const b of pred.branches) {
+                wrappedText(doc, theme, margin, `IF ${b.condition}`, { fontSize: 7, color: theme.accent, x: margin.left + 3, maxW: contentW - 6 });
+                wrappedText(doc, theme, margin, `→ ${b.path}`, { fontSize: 7, color: theme.muted, x: margin.left + 3, maxW: contentW - 6 });
+              }
+            }
+
+            if (pred.accelerants) {
+              doc.setFontSize(7);
+              doc.setTextColor(...rgb(theme.rose));
+              doc.text('ACCELERANTS', margin.left, margin.y);
+              margin.y += 3.5;
+              wrappedText(doc, theme, margin, pred.accelerants, { fontSize: 7, color: theme.muted });
+            }
+
+            if (pred.interrupters) {
+              doc.setFontSize(7);
+              doc.setTextColor(...rgb(theme.green));
+              doc.text('INTERRUPTERS', margin.left, margin.y);
+              margin.y += 3.5;
+              wrappedText(doc, theme, margin, pred.interrupters, { fontSize: 7, color: theme.muted });
+            }
+
+            if (pred.least_certain) {
+              doc.setFontSize(7);
+              doc.setTextColor(...rgb(theme.muted));
+              doc.text('LEAST CERTAIN', margin.left, margin.y);
+              margin.y += 3.5;
+              wrappedText(doc, theme, margin, pred.least_certain, { fontSize: 7, color: theme.muted });
+            }
+
             doc.setFontSize(7);
             doc.setTextColor(...rgb(theme.green));
-            doc.text('PREDICTED BEHAVIOR', margin.left, margin.y);
+            doc.text('HEADLINE OUTCOME', margin.left, margin.y);
             margin.y += 3.5;
             wrappedText(doc, theme, margin, behavior, { fontSize: 8 });
 

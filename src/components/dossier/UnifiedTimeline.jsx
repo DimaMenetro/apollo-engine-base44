@@ -61,6 +61,9 @@ export default function UnifiedTimeline({ behavioralPatterns, thresholdAssessmen
         type: 'predicted',
         label: arm.trigger || `Prediction ${i + 1}`,
         detail: arm.predicted_behavior,
+        // The trajectory sequence is the actual product — show it, not just the headline.
+        trajectory: arm.trajectory || [],
+        inferenceClass: arm.inference_class,
         probability: arm.probability,
         color: '#8b5cf6',
         position: 0,
@@ -198,10 +201,30 @@ function TimelineNode({ node, isDark, t }) {
           </span>
         )}
       </div>
+      {node.inferenceClass && (
+        <span style={{
+          display: 'inline-block', fontSize: 8, fontWeight: 600, letterSpacing: '0.06em',
+          textTransform: 'uppercase', padding: '1px 6px', borderRadius: 999, marginBottom: 5,
+          background: node.inferenceClass === 'forward_inference' ? 'rgba(139,92,246,0.12)' : 'rgba(6,182,212,0.12)',
+          color: node.inferenceClass === 'forward_inference' ? '#8b5cf6' : '#06b6d4',
+        }}>
+          {node.inferenceClass === 'forward_inference' ? 'Forward Inference' : 'Pattern Recurrence'}
+        </span>
+      )}
       {node.detail && (
         <p style={{ fontSize: 11, color: t.muted, lineHeight: 1.5, margin: 0 }}>
           {node.detail.length > 120 ? node.detail.slice(0, 120) + '…' : node.detail}
         </p>
+      )}
+      {node.trajectory?.length > 0 && (
+        <ol style={{ margin: '6px 0 0', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {node.trajectory.map((step, i) => (
+            <li key={i} style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+              <span style={{ fontSize: 9, fontFamily: 'monospace', color: node.color, flexShrink: 0, paddingTop: 1 }}>{i + 1}→</span>
+              <span style={{ fontSize: 10, color: t.text, lineHeight: 1.45 }}>{step}</span>
+            </li>
+          ))}
+        </ol>
       )}
     </div>
   );
