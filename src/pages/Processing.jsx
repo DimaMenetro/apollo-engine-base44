@@ -9,7 +9,8 @@ import { useAccessory } from '../components/ui/AccessoryContext';
 import { ArrowLeft, ArrowRight, Loader2, FileText, Brain, PenTool, Activity, GitBranch, AlertTriangle } from 'lucide-react';
 import AnalysisModule from '../components/processing/AnalysisModule';
 import { motion, AnimatePresence } from 'framer-motion';
-import { validateFileUrl } from '../lib/validateFileUrl';
+import { analyzeModuleEvidence, coverageLabel } from '../lib/evidenceProcessing';
+import { mergeAnalysisResults, detectConflicts } from '../lib/analysisMerge';
 
 const analysisModules = [
   { key: 'stylometric_fingerprint', title: 'Module 4.1: Text Logic',       description: 'Extract syntax patterns + word choice',              outputLabel: 'Stylometric Fingerprint', icon: FileText,   color: 'amber',   requiredStream: 'stream_a_text'       },
@@ -53,63 +54,6 @@ export default function Processing() {
     },
   });
 
-  const preprocessFiles = async (fileUrls, moduleKey) => {
-    const info = [];
-    const processedUrls = [];
-    let enhancedPrompt = null;
-
-    for (const url of fileUrls.slice(0, 3)) {
-      const fileName = url.split('/').pop().toLowerCase();
-      const ext = fileName.split('.').pop();
-
-      if (ext === 'xlsx') {
-        try {
-          validateFileUrl(url); // SSRF guard: only trusted https storage hosts
-          const csvData = await base44.integrations.Core.InvokeLLM({
-            prompt: `Convert this XLSX file to CSV format. Extract the first sheet. Return ONLY the CSV data with comma-separated values, no explanation.`,
-            file_urls: [url],
-          });
-          info.push(`XLSX converted to CSV: ${fileName}`);
-          enhancedPrompt = (enhancedPrompt || '') + `\n\nBehavioral data from ${fileName} (converted from XLSX):\n${csvData}`;
-        } catch (error) {
-          info.push(`XLSX conversion failed for ${fileName}.`);
-          throw new Error(`XLSX conversion failed: ${fileName}`);
-        }
-        continue;
-      }
-
-      if (['m4a', 'mp3', 'wav', 'mp4', 'mov'].includes(ext)) {
-        try {
-          const acousticAnalysis = await base44.functions.invoke('analyzeAudio', { file_url: url });
-          const emotionData = acousticAnalysis.data?.predictions ?? acousticAnalysis.data;
-          const transcript = acousticAnalysis.data?.transcript || null;
-          if (transcript) {
-            info.push(`${ext.toUpperCase()} processed: emotion analyzed via Imentiv + transcript generated via AssemblyAI for ${fileName}`);
-          } else {
-            info.push(`${ext.toUpperCase()} processed: emotion analyzed via Imentiv, transcript unavailable for ${fileName}`);
-          }
-          const mediaType = (ext === 'mp4' || ext === 'mov') ? 'Video' : 'Audio';
-          enhancedPrompt = (enhancedPrompt || '') + `\n\n${mediaType} analysis for ${fileName}:\nEmotion Data: ${JSON.stringify(emotionData)}\n${transcript ? `Verbatim Transcript: ${transcript}` : 'Transcript: unavailable'}`;
-        } catch (error) {
-          // Per-file resilience: one media file failing must NOT abort the
-          // whole module. Record the failure and continue with the rest.
-          info.push(`${ext.toUpperCase()} SKIPPED — processing failed for ${fileName}: ${error.message}`);
-        }
-        continue;
-      }
-
-      if (['csv', 'pdf', 'png', 'jpg', 'jpeg', 'txt', 'md'].includes(ext)) {
-        processedUrls.push(url);
-        info.push(`${ext.toUpperCase()} processed: ${fileName}`);
-        continue;
-      }
-
-      info.push(`Unsupported format: ${fileName} (${ext}).`);
-    }
-
-    return { fileUrls: processedUrls, prompt: enhancedPrompt, info: info.join(' | ') };
-  };
-
   const getAnalysisPrompt = (moduleKey, subjectName) => ({
     stylometric_fingerprint: `Analyze the attached text data for subject "${subjectName}". Extract writing style patterns, word choice tendencies, emotional tone, linguistic fingerprint characteristics, and any notable deviations.`,
     cognitive_architecture:  `Analyze the attached content for subject "${subjectName}" to map cognitive patterns: reasoning chains, defense mechanisms, decision-making patterns, and cognitive biases.`,
@@ -122,109 +66,114 @@ export default function Processing() {
     if (!subject) return;
     if (subject.status === 'review' && subject.analysis_results) {
       const confirmed = window.confirm(
-        'This subject has already been processed and is pending review. Re-running analysis will overwrite existing results. Continue?'
+        'This subject has already been processed and is pending review. Re-running will replace each module that successfully re-analyzes; modules with no new evidence or a failed refresh keep their existing valid results. Continue?'
       );
       if (!confirmed) return;
     }
     setIsProcessing(true);
     startProcessing(subjectId, subject.name);
-    const results = {};
-    const detectedConflicts = [];
+
+    // Fresh results are STAGED in memory. Subject.analysis_results is written
+    // exactly once, at the end, so a failed run can never leave the subject with
+    // a half-written mixture of module state.
+    const fresh = {};
+    const failedRefreshes = [];
 
     for (let i = 0; i < analysisModules.length; i++) {
       const module = analysisModules[i];
       setCurrentModule(i);
-      const hasData = module.requiredStreams
-        ? module.requiredStreams.some(s => subject[s]?.length > 0)
-        : subject[module.requiredStream]?.length > 0;
 
-      if (!hasData) { setModuleStatuses(prev => ({ ...prev, [module.key]: 'pending' })); continue; }
+      const fileUrls = module.requiredStreams
+        ? module.requiredStreams.flatMap(s => subject[s] || [])
+        : (subject[module.requiredStream] || []);
+
+      // No applicable evidence — the module is NOT rerun, and its previous valid
+      // result (if any) is preserved by the merge rather than deleted.
+      if (fileUrls.length === 0) {
+        setModuleStatuses(prev => ({ ...prev, [module.key]: subject.analysis_results?.[module.key] ? 'complete' : 'pending' }));
+        continue;
+      }
 
       setModuleStatuses(prev => ({ ...prev, [module.key]: 'running' }));
 
       try {
-        await new Promise(resolve => setTimeout(resolve, 1500));
         updateProgress(module.title, Math.round(((i + 0.5) / analysisModules.length) * 100));
 
-        const fileUrls = module.requiredStreams
-          ? module.requiredStreams.flatMap(s => subject[s] || [])
-          : (subject[module.requiredStream] || []);
-        const preprocessedData = await preprocessFiles(fileUrls, module.key);
-        const prompt = getAnalysisPrompt(module.key, subject.name);
-
-        const response = await base44.integrations.Core.InvokeLLM({
-          prompt: preprocessedData.prompt || prompt,
-          file_urls: preprocessedData.fileUrls,
-          response_json_schema: {
-            type: "object",
-            properties: {
-              summary: { type: "string" },
-              key_patterns: { type: "array", items: { type: "string" } },
-              indicators: { type: "array", items: { type: "string" } },
-              confidence: { type: "number" },
-              flags: { type: "array", items: { type: "string" } },
-              processing_notes: { type: "string" }
-            }
-          }
+        const { result } = await analyzeModuleEvidence({
+          instruction: getAnalysisPrompt(module.key, subject.name),
+          fileUrls,
+          onStage: (stage) => updateProgress(
+            `${module.title} — ${stage}`,
+            Math.round(((i + 0.5) / analysisModules.length) * 100)
+          ),
         });
 
-        results[module.key] = { ...response, preprocessing_info: preprocessedData.info };
-        setAnalysisResults(prev => ({ ...prev, [module.key]: results[module.key] }));
+        fresh[module.key] = result;
+        setAnalysisResults(prev => ({ ...prev, [module.key]: result }));
         setModuleStatuses(prev => ({ ...prev, [module.key]: 'complete' }));
         setErrorDetails(prev => ({ ...prev, [module.key]: null }));
         updateProgress(module.title, Math.round(((i + 1) / analysisModules.length) * 100));
       } catch (error) {
+        // Failed refresh: the prior valid result is retained, and the operator is
+        // told the refresh failed rather than losing the old knowledge silently.
+        failedRefreshes.push(module.key);
         setModuleStatuses(prev => ({ ...prev, [module.key]: 'error' }));
         setErrorDetails(prev => ({ ...prev, [module.key]: error.message || 'Analysis failed' }));
       }
     }
 
-    if (results.stylometric_fingerprint && results.behavioral_loop) {
-      const textFlags = results.stylometric_fingerprint?.flags || [];
-      const behaviorFlags = results.behavioral_loop?.flags || [];
-      if (textFlags.some(f => f.toLowerCase().includes('positive')) && behaviorFlags.some(f => f.toLowerCase().includes('negative'))) {
-        detectedConflicts.push({ type: 'text_behavior_mismatch', description: 'Words conflict with Actions - prioritizing behavioral analysis', resolution: 'Actions prioritized over stated intentions' });
-      }
-    }
+    const { merged, preservedAfterFailure } = mergeAnalysisResults({
+      previous: subject.analysis_results,
+      fresh,
+      failedRefreshes,
+    });
 
-    if (results.stylometric_fingerprint && results.affective_state) {
-      const textConf = results.stylometric_fingerprint?.confidence || 0;
-      const affectConf = results.affective_state?.confidence || 0;
-      if (Math.abs(textConf - affectConf) > 30) {
-        detectedConflicts.push({ type: 'deception_flag', description: 'High Prob Deception - Bio-Signal conflicts with Text', resolution: 'Flagged for manual review' });
-        setModuleStatuses(prev => ({ ...prev, affective_state: 'conflict' }));
-      }
-    }
-
+    // Conflict detection runs on the FINAL EFFECTIVE set, not just fresh modules.
+    const detectedConflicts = detectConflicts(merged);
     setConflicts(detectedConflicts);
+    if (detectedConflicts.some(c => c.type === 'deception_flag')) {
+      setModuleStatuses(prev => ({ ...prev, affective_state: prev.affective_state === 'complete' ? 'conflict' : prev.affective_state }));
+    }
 
-    const completedModules = Object.keys(results);
-    if (completedModules.length === 0) {
+    if (Object.keys(merged).length === 0) {
       setIsProcessing(false);
       alert('No modules completed successfully. Check that your files are valid and try again.');
       return;
     }
 
     try {
-      await updateMutation.mutateAsync({ analysis_results: results, conflicts_detected: detectedConflicts, status: 'review' });
+      await updateMutation.mutateAsync({
+        analysis_results: merged,
+        conflicts_detected: detectedConflicts,
+        status: 'review',
+      });
     } catch (saveError) {
       setIsProcessing(false);
       alert(`Analysis completed but failed to save: ${saveError.message}. Please try again.`);
       return;
     }
 
+    if (preservedAfterFailure.length > 0) {
+      const labels = preservedAfterFailure
+        .map(k => analysisModules.find(m => m.key === k)?.outputLabel || k)
+        .join(', ');
+      alert(`Refresh failed for: ${labels}. The previous valid analysis for these modules was PRESERVED, not deleted. Re-run to retry.`);
+    }
+
     setIsProcessing(false);
     finishProcessing(subjectId);
   };
-
-  const progress = Object.values(moduleStatuses).filter(s => s === 'complete' || s === 'conflict').length;
-  const totalWithData = analysisModules.filter(m => subject?.[m.requiredStream]?.length > 0).length;
-  const progressPercent = totalWithData > 0 ? (progress / totalWithData) * 100 : 0;
 
   const moduleHasData = (module) =>
     module.requiredStreams
       ? module.requiredStreams.some(s => subject?.[s]?.length > 0)
       : subject?.[module.requiredStream]?.length > 0;
+
+  const progress = Object.values(moduleStatuses).filter(s => s === 'complete' || s === 'conflict').length;
+  // Counts multi-stream modules (Affective State) too — the old expression only
+  // read `requiredStream`, so it under-counted the denominator.
+  const totalWithData = analysisModules.filter(m => moduleHasData(m)).length;
+  const progressPercent = totalWithData > 0 ? Math.min(100, (progress / totalWithData) * 100) : 0;
 
   if (isLoading) {
     return (
@@ -331,12 +280,23 @@ export default function Processing() {
                   <p style={{ fontSize: 11, color: t.muted, margin: 0 }}>Files: {fileCount}</p>
                 </motion.div>
               )}
-              {analysisResults[module.key]?.preprocessing_info && status === 'complete' && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
-                  style={{ marginTop: 6, padding: 12, borderRadius: 10, background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.20)' }}>
-                  <p style={{ fontSize: 12, color: '#10b981', margin: 0 }}>{analysisResults[module.key].preprocessing_info}</p>
-                </motion.div>
-              )}
+              {analysisResults[module.key]?.preprocessing_info && status === 'complete' && (() => {
+                const cov = analysisResults[module.key].evidence_coverage;
+                const incomplete = cov && (cov.failed_count > 0 || cov.unsupported_count > 0);
+                const tint = incomplete ? '244,63,94' : '16,185,129';
+                const color = incomplete ? '#f43f5e' : '#10b981';
+                return (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+                    style={{ marginTop: 6, padding: 12, borderRadius: 10, background: `rgba(${tint},0.08)`, border: `1px solid rgba(${tint},0.20)` }}>
+                    {cov && (
+                      <p style={{ fontSize: 12, color, margin: '0 0 4px', fontWeight: 600 }}>
+                        {coverageLabel(cov)}{cov.batches_run > 1 ? ` · ${cov.batches_run} batches synthesized` : ''}
+                      </p>
+                    )}
+                    <p style={{ fontSize: 11, color: t.muted, margin: 0, lineHeight: 1.5 }}>{analysisResults[module.key].preprocessing_info}</p>
+                  </motion.div>
+                );
+              })()}
             </div>
           );
         })}

@@ -62,6 +62,39 @@ Daionae's live-app audit approved the Phase 6 concept, core generation, UI compo
 - **`UnifiedTimeline`** — predicted nodes now render the actual ordered trajectory steps plus an inference-class badge, instead of only the headline behavior.
 - **`exportDSP` PDF** — the predictive section is now "SUBJECT SIMULATION" and exports inference class, observed basis, architecture mechanism, numbered trajectory, branches, accelerants, interrupters, and least-certain; the headline field is relabelled accordingly.
 
+### Phase 7 — Evidence-Processing Fidelity Repair ✅ 2026-08-11
+
+**Defect (Daionae, confirmed by inspection):** `Processing.jsx::preprocessFiles()` contained `fileUrls.slice(0, 3)` — present since the March 26 build. Every source after the third was silently and POSITIONALLY excluded. Not introduced by Phase 6, Tiny Chronologos, or the schema repairs; Dima's corpus finally crossed the hidden threshold. There is nothing in the code justifying "3"; best inference is an early prototype token/latency guard.
+
+**Documented proof before the fix** — Dima's stored `preprocessing_info`:
+- Stylometric + Cognitive listed only 3 PDFs; `DimensionalIntelligence.pdf` was never analyzed.
+- Psychomotor listed only 3 of 5 handwriting samples.
+
+**Constraints verified empirically first** (real subject files, 2026-08-11) — the objective was explicitly NOT "raise 3 to 10", which would only relocate the hidden threshold:
+| probe | result |
+|---|---|
+| 4 PDFs | accepted, all 4 genuinely read, 14s |
+| 8 PDFs | accepted, all 8 genuinely read, 19s |
+| 5 images | accepted, all 5 genuinely read, 8s |
+| 12 images | accepted, all 12 genuinely read, 31s |
+
+No three-file provider limit exists. But latency scales with attachment count, and the live corpus already holds subjects with 22 analog and 183 behavioral sources — so unbounded single-invocation submission is equally unsafe. Batch sizes are derived from these measurements with headroom for full-length analytical output: **6 documents / 8 images / 60k chars of preprocessed text per batch.**
+
+**Implementation** (new `src/lib/evidenceProcessing.js`, `src/lib/analysisMerge.js`; `Processing.jsx` 379 → 339 lines):
+1. **Complete-corpus processing** — all module evidence → bounded batches → per-batch analysis → module-wide synthesis → ONE canonical module result. Batch boundaries are a technical artifact, never an epistemic boundary; a 2-source and a 22-source subject traverse the same logical analysis. The five-module architecture and the module result contract (summary, key_patterns, indicators, confidence, flags, processing_notes, preprocessing_info) are unchanged — DSP and downstream consumers never see batching.
+2. **Reduction is genuine synthesis**, not concatenation: replication across sources is stated as corpus-wide, contradictions are preserved with their supporting sources rather than averaged away, and failed sources are named as coverage gaps.
+3. **Auditable disposition per source** — every source ends in exactly one of processed / failed / unsupported / skipped-with-reason. Order preserved for auditability, never affecting inclusion. XLSX conversion failure previously THREW and destroyed the whole module; it is now recorded and skipped, matching the July per-file media resilience.
+4. **Prompt-discard bug fixed** — the old `preprocessedData.prompt || prompt` silently DISCARDED the module's analytical instruction whenever media/XLSX preprocessing produced an enhanced prompt, so media-bearing modules were never told what to analyze. Every request now carries instruction + source manifest + complete preprocessed payload.
+5. **Preservation/merge semantics** — runs no longer start from an epistemically empty `results = {}`. Start from the subject's valid `analysis_results`; replace a module only on successful supersede; preserve modules not rerun; on failed refresh keep the prior valid result and tell the operator the refresh failed.
+6. **Atomicity** — fresh module results are staged in memory and `Subject.analysis_results` is written exactly once at a coherent terminal state. No progressive partial writes.
+7. **Conflict detection** now evaluates the final EFFECTIVE module set (preserved + refreshed), so preserving an older Behavioral Loop no longer skips a check that should still run.
+8. **Coverage metadata**, generated programmatically (never LLM-invented): total/processed/failed/unsupported counts, per-source identity + disposition, batch counts, and a deterministic FNV-1a `source_set_fingerprint` so Apollo can distinguish "represents the current corpus" from "preserved older result."
+9. **Operator truthfulness** — the existing module UI now shows `4/4 sources processed` (green) or `4/5 processed · 1 failed` (red) with per-source dispositions; no new dashboards. Progress denominator now counts multi-stream modules (Affective State), which the old expression under-counted.
+
+Regression-protected: per-file media resilience, Imentiv + AssemblyAI dual processing, SSRF `validateFileUrl` on XLSX, module output shapes, accessory progress behavior.
+
+**Acceptance test pending operator run** — Dima (`697e3fac`): 4 text, 5 analog, 1 audio + 2 video. All modules now plan to a single batch each at the verified-safe sizes, so full coverage with no reduction pass and no new latency exposure. DSP regeneration deliberately deferred until stored coverage is verified against the actual stream arrays.
+
 ### Phase 6c — Structured-Output Grammar Limit ✅ 2026-08-11
 
 **Failure:** DSP generation returned a provider 400 at schema/grammar compilation time. Nothing was generated — the request was rejected before the model ran. The error establishes ONLY that the combined structured-output grammar is too large; it says nothing about the Tiny Chronologos design, Caden's output quality, or any need for a forecasting subsystem.
