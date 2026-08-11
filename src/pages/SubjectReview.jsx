@@ -82,21 +82,91 @@ REQUIRED OUTPUT FIELDS:
 
 Be thorough, specific, and analytical. Ground every claim in evidence. All scores must be integers 0-100.`;
 
+      // Each Big Five trait — schema must be FULLY specified: with structured
+      // output the model only fills declared properties; bare {type:"object"}
+      // comes back as null/empty (root cause of hollow DSP sections).
+      const traitSchema = {
+        type: "object",
+        properties: {
+          score: { type: "integer" },
+          label: { type: "string" },
+          evidence: { type: "string" },
+          indicators: { type: "array", items: { type: "string" } },
+        },
+        required: ["score", "label", "evidence", "indicators"],
+      };
+
       const dspSchema = {
         type: "object",
         properties: {
           executive_summary: { type: "string" },
           classification: { type: "string" },
-          confidence_score: { type: "number" },
+          confidence_score: { type: "integer" },
           confidence_justification: { type: "string" },
-          personality_matrix: { type: "object" },
-          cognitive_architecture: { type: "object" },
-          behavioral_patterns: { type: "array", items: { type: "object" } },
-          predictions: { type: "array", items: { type: "object" } },
+          personality_matrix: {
+            type: "object",
+            properties: {
+              openness: traitSchema,
+              conscientiousness: traitSchema,
+              extraversion: traitSchema,
+              agreeableness: traitSchema,
+              neuroticism: traitSchema,
+            },
+            required: ["openness", "conscientiousness", "extraversion", "agreeableness", "neuroticism"],
+          },
+          cognitive_architecture: {
+            type: "object",
+            properties: {
+              thinking_style: { type: "string" },
+              epistemic_requirements: { type: "string" },
+              defense_mechanisms: { type: "string" },
+              sub_sections: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: { title: { type: "string" }, content: { type: "string" } },
+                  required: ["title", "content"],
+                },
+              },
+            },
+            required: ["thinking_style", "epistemic_requirements", "defense_mechanisms", "sub_sections"],
+          },
+          behavioral_patterns: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                label: { type: "string" },
+                description: { type: "string" },
+                context: { type: "string" },
+              },
+              required: ["label", "description", "context"],
+            },
+          },
+          predictions: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                trigger: { type: "string" },
+                context: { type: "string" },
+                predicted_behavior: { type: "string" },
+                probability: { type: "integer" },
+                confidence_interval: {
+                  type: "object",
+                  properties: { lower: { type: "integer" }, upper: { type: "integer" } },
+                  required: ["lower", "upper"],
+                },
+                temporal_factors: { type: "string" },
+              },
+              required: ["trigger", "context", "predicted_behavior", "probability", "confidence_interval", "temporal_factors"],
+            },
+          },
           motivations: { type: "array", items: { type: "string" } },
           fears: { type: "array", items: { type: "string" } },
           final_assessment: { type: "string" },
-        }
+        },
+        required: ["executive_summary", "classification", "confidence_score", "confidence_justification", "personality_matrix", "cognitive_architecture", "behavioral_patterns", "predictions", "motivations", "fears", "final_assessment"],
       };
 
       updateProgress('Synthesizing profile...', 30);
