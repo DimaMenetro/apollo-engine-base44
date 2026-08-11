@@ -62,8 +62,23 @@ Daionae's live-app audit approved the Phase 6 concept, core generation, UI compo
 - **`UnifiedTimeline`** — predicted nodes now render the actual ordered trajectory steps plus an inference-class badge, instead of only the headline behavior.
 - **`exportDSP` PDF** — the predictive section is now "SUBJECT SIMULATION" and exports inference class, observed basis, architecture mechanism, numbered trajectory, branches, accelerants, interrupters, and least-certain; the headline field is relabelled accordingly.
 
+### Phase 6c — Structured-Output Grammar Limit ✅ 2026-08-11
+
+**Failure:** DSP generation returned a provider 400 at schema/grammar compilation time. Nothing was generated — the request was rejected before the model ran. The error establishes ONLY that the combined structured-output grammar is too large; it says nothing about the Tiny Chronologos design, Caden's output quality, or any need for a forecasting subsystem.
+
+**Verification first (per Daionae, before any redesign):** inspected the live request path in `SubjectReview`. It contained a single `InvokeLLM` call with a single `response_json_schema` — no accidental duplicated schema or strict-tool payload. The combined fully-typed DSP + Phase-6 simulation grammar is therefore the real cause.
+
+**Rejected remedies:** bare nested objects (reintroduces the hollow-DSP bug); dropping trajectory/mechanism/branches (deletes the feature); non-strict output + post-hoc validation (weakens the protection installed after the hollow-section incident).
+
+**Fix:** the existing DSP generation operation is divided into **two structured-output calls solely because its combined grammar exceeds the provider limit. The logical DSP operation remains one operation.**
+- New module `src/lib/dspGeneration.js` — `generateDSP()` owns both passes and the merge; `SubjectReview` dropped 612 → 455 lines.
+- **Pass 1 (subject model):** summary, classification, confidence, personality matrix, cognitive architecture, behavioral patterns, motivations, fears, final assessment. Prompted to make loops mechanistically explicit since it becomes the simulation substrate.
+- **Pass 2 (simulations):** predictions only, consuming the COMPLETED pass-1 model as substrate plus the original evidence for grounding. Simulations must be traceable to named structures in the model rather than extrapolated straight from raw evidence. *(This addresses the evidence → constructed subject → run-forward architecture as a benefit of the split, not as its justification.)*
+- Both passes keep fully-typed strict schemas; no simulation field was removed.
+- Merge-then-persist: a single write at the end, so a failed pass 2 cannot overwrite a good DSP.
+
 **Open items carried forward (per Daionae, not blocking):**
-1. **Behavioral test outstanding** — regenerate Caden and inspect whether trajectories genuinely derive from the *synthesized architecture* rather than directly extrapolating raw `analysis_results`. Generation is currently one joint call (analysis → architecture + simulations), not two stages. If subtle recapitulation persists, the minimal next correction is **two-stage DSP generation**: synthesize the subject model first, then hand that completed model to a separate prediction pass. Do not build a subsystem for this preemptively.
+1. **Phase-6 behavioral acceptance test still outstanding** — regenerate Caden and inspect whether trajectories genuinely derive from his synthesized architecture rather than recapitulating history. The grammar fix unblocks this test; it does not substitute for it.
 2. **Epistemic naming** — `confidence_interval` / "CI:" are LLM-generated ranges, not statistically derived intervals. Rename to `uncertainty_range` eventually (cheap, cleaner epistemics).
 3. **Continuity** — the live Base44 app is AHEAD of the GitHub repository. GitHub still reflects the earlier hollow-schema repair; Phase 6 and 6b exist only in Base44. Do not treat GitHub as synchronized.
 
